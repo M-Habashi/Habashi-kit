@@ -1,0 +1,10 @@
+{
+  "name": "habashi-kit-job-neo",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}

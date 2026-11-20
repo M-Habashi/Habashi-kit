@@ -1,0 +1,24 @@
+{
+  "title": "Submitted and verified",
+  "badge": "Verified",
+  "tone": "success",
+  "subtitle": "Northstar Engineering - Project Analyst",
+  "blocks": [
+    {"type": "kv", "heading": "Receipt", "rows": [
+      ["Req ID", "REQ-1042"],
+      ["Confirmation", "Thank you for applying! Reference #NS-58213"],
+      ["Evidence", "workspace/evidence/northstar-engineering/confirmation.png"]
+    ]},
+    {"type": "list", "heading": "Uploaded files", "items": [
+      "Sample_Candidate_Resume.pdf",
+      "Sample_Candidate_Cover_Letter_Northstar.pdf"
+    ]},
+    {"type": "table", "heading": "Custom questions answered", "columns": ["Question", "Answer"], "rows": [
+      ["Are you authorized to work in the US?", "Yes"],
+      ["Will you require sponsorship now or in the future?", "Yes"],
+      ["Earliest start date", "June 1, 2027"],
+      ["Salary expectation", "Open / Negotiable"]
+    ]},
+    {"type": "list", "heading": "Left blank on purpose (optional)", "items": ["Referral name", "Middle name"]}
+  ]
+}

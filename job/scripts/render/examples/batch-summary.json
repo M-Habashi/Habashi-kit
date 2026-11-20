@@ -1,0 +1,17 @@
+{
+  "title": "Batch run summary",
+  "subtitle": "6 roles processed",
+  "badge": "2 need your input",
+  "tone": "warning",
+  "blocks": [
+    {"type": "table", "columns": ["Employer", "Role", "Status", "Next step"], "rows": [
+      ["Northstar Engineering", "Project Analyst", "verified", "Done - receipt NS-58213"],
+      ["Harbor Robotics", "Controls Engineer", "verified", "Done - email confirmation"],
+      ["Apex Labs", "Systems Engineer II", "skipped", "Clearance required"],
+      ["Bluefield Energy", "Design Engineer", "blocked", "Question: willing to work rotating shifts?"],
+      ["Crescent Utilities", "Engineer I", "blocked", "Question: years of PLC experience?"],
+      ["Northwind Transit", "Analyst", "outcome_unknown", "Portal timed out after Submit - check email"]
+    ]},
+    {"type": "note", "tone": "warning", "text": "Answer the 2 questions above and I will finish those tabs; they are kept open in 'Needs your input'."}
+  ]
+}

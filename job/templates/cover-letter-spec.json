@@ -1,0 +1,25 @@
+{
+  "employer": "Example Company",
+  "role": "Example Role Title",
+  "req_id": "REQ-0001",
+  "date": "2026-01-15",
+  "output_slug": "Example_Company_Example_Role",
+  "header": {
+    "name": "Your Name",
+    "contact_line": "City, State | email@example.com | +1-000-000-0000 | linkedin.com/in/your-handle"
+  },
+  "recipient": {
+    "name": "Hiring Team",
+    "company": "Example Company",
+    "location": "City, State"
+  },
+  "salutation": "Dear Hiring Team,",
+  "paragraphs": [
+    "I am writing to apply for the Example Role Title position at Example Company. My background aligns directly with your team's focus on reliable delivery and measurable technical execution.",
+    "At Current or Primary Employer, I led core project deliverables and streamlined technical workflows to improve schedule accuracy. Earlier at Previous Employer, I supported cross-functional analyses and documentation across tight deadlines.",
+    "Through my academic research and applied project work, I built a strong foundation in quantitative problem solving using Python and Excel to validate complex models.",
+    "I am excited to bring this combination of practical execution and analytical rigor to Example Company. Thank you for considering my application, and I welcome the opportunity to discuss how I can contribute to your team."
+  ],
+  "closing": "Sincerely,",
+  "signature": "Your Name"
+}

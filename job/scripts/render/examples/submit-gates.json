@@ -1,0 +1,13 @@
+{
+  "title": "Ready to submit?",
+  "subtitle": "Northstar Engineering - Project Analyst (REQ-1042)",
+  "blocks": [
+    {"type": "checklist", "items": [
+      {"label": "Resume / CV attached", "status": "ok", "detail": "Sample_Candidate_Resume.pdf visible in portal"},
+      {"label": "LinkedIn URL entered", "status": "ok"},
+      {"label": "Tailored cover letter attached", "status": "ok", "detail": "Sample_Candidate_Cover_Letter_Northstar.pdf"},
+      {"label": "Required fields and review page verified", "status": "ok"},
+      {"label": "submission_attempted checkpoint logged", "status": "pending", "detail": "Logged right before clicking Submit"}
+    ]}
+  ]
+}

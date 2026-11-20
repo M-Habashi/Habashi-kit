@@ -1,0 +1,14 @@
+{
+  "title": "Skipped: hard blocker",
+  "badge": "Skipped",
+  "tone": "warning",
+  "subtitle": "Apex Labs - Systems Engineer II (AL-7731)",
+  "blocks": [
+    {"type": "kv", "rows": [
+      ["Requirement", "Active security clearance required at start"],
+      ["Your profile", "No clearance held"],
+      ["Logged as", "skipped (no cover letter drafted)"]
+    ]},
+    {"type": "note", "tone": "info", "text": "Missing software tools never count as blockers; only authorization, clearance, license, or hard degree/GPA rules do."}
+  ]
+}

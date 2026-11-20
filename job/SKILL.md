@@ -1,0 +1,130 @@
+---
+name: habashi-kit-job
+description: Reusable, domain-agnostic job-search and job-application skill with startup preflight checks, browser/tool readiness detection, Q&A memory updates, duplicate-safe JSONL logging, 1-page tailored cover-letter generation, and ATS playbooks.
+---
+
+# Habashi-kit/job
+
+A structured, progressive-disclosure workflow for discovering roles, filling ATS forms truthfully, generating tailored 1-page cover letters, and recording verified submissions. Keep this file as your runbook and load files from `references/` only when needed.
+
+## Output Rendering (Default for Every Report)
+
+Show structured output (checklists, blocker notices, gate checks, reviews, batch summaries, the ledger) as a **rendered card**, never as hand-formatted Markdown:
+- **Inline HTML render tool available** (e.g. `html_render`): `python job/scripts/render/render.py <preflight|ledger|card payload.json> --out <workspace_dir>/output/render/<name>.html`, then render that path. Don't restate the card in prose.
+- **No inline renderer**: add `--format text` and paste the plain-text output verbatim.
+- Single questions and one-line updates stay plain text. Payload format and examples: `references/rendering.md`.
+
+## Step 1: Startup Preflight Gate (Always Run First)
+
+Run both checks before opening job portals, drafting materials, or submitting applications.
+
+### 1A. Documents & Profile Check
+Locate the user's private workspace (default: `workspace/` or a user-specified directory) and inspect `profile.md`, `answers.md`, `rules.json`, and `docs/`.
+
+1. **Required items**:
+   - Resume / CV PDF in `docs/`.
+   - Core candidate facts in `profile.md` (contact info, links, education with exact GPA/scales, work history in preferred CV order, confirmed tools/skills).
+   - Core reusable answers in `answers.md` (work authorization & sponsorship wording, availability/start date, salary expectation rule, target roles/locations).
+   - Configured `rules.json` (author name, file prefix, confirmed/unconfirmed software lists, forbidden claims, employer order, aliases).
+2. **Optional items (ask if applicable to the user's field)**:
+   - Certifications or professional licenses.
+   - Academic transcripts.
+   - Reference list or cover-letter template.
+   - Portfolio, GitHub, or work samples.
+3. **Render the preflight card** (documents + tools from 1B in one card; it inspects the workspace for you):
+   ```bash
+   python job/scripts/render/render.py preflight --workspace <workspace_dir> --tool "BrowserOS Neo MCP=<ok|warn>:<note>" --out <workspace_dir>/output/render/preflight.html
+   ```
+   Exit code `2` means required items are missing: pause until the user provides them. If the workspace doesn't exist yet, create it first with:
+   ```bash
+   python job/scripts/init_workspace.py <workspace_dir>
+   ```
+   Then extract CV facts once into `profile.md` (see `references/onboarding.md`). During normal runs, read `profile.md` instead of re-parsing the PDF; reopen the PDF only for uploads or profile updates.
+
+### 1B. Tools & Browser Readiness Check
+Verify available execution tools and report readiness upfront:
+
+1. **Primary Browser — BrowserOS Neo MCP (Strongly Recommended)**:
+   - Preferred for live logins, persistent session profile, fast `run` scripts, CDP file uploads, and `scripts/neo/` ATS helpers.
+   - If BrowserOS Neo is unavailable, you may fall back to Chrome, built-in browser tools, or Playwright, **but explicitly inform the user that BrowserOS Neo is strongly recommended** and explain why (persistent logins, faster batched ATS scripts, fewer CAPTCHA/login resets).
+2. **OS Computer Use (Optional Native Fallback)**:
+   - Check whether OS Computer Use is available (especially Codex models with `@oai/sky` + Codex desktop app running) for stubborn native OS file pickers, OAuth popups, or browser "Leave site?" dialogs.
+   - Enforce the **single-step return-to-browser boundary**: name the single blocked step, perform the minimum native action, and return immediately to browser automation. Never automate OS password/PIN prompts.
+   - If unavailable, tell the user upfront that stubborn native OS dialogs will pause for a quick human click.
+3. **Local Script Dependencies (Optional but Recommended)**:
+   - Python `reportlab` + `pymupdf` (`fitz`) for `scripts/coverletter/build.py` (1-page PDF + QA PNG rendering).
+   - Node.js (and `pnpm --dir job/scripts/neo install` for `jobs.mjs`) for `scripts/neo/emit.mjs` and `jobs.mjs`.
+4. **Renderer**: note whether an inline HTML render tool exists. This sets `html` or `text` mode for the whole session (see Output Rendering above).
+
+## Step 2: Core Workflow (Single Job or Batch)
+
+Follow this exact sequence for each target role:
+
+### 1. Duplicate Check First
+Before opening a form or drafting anything, check the workspace ledger:
+```bash
+python job/scripts/ledger/ledger.py check "<Employer>" --req "<ReqID>" --workspace <workspace_dir>
+```
+- Exit code `1` means a `submitted` or `verified` record already exists (including configured aliases or matching req ID) — skip to avoid duplicate applications.
+- Exit code `0` means safe to proceed; reserve or log status as needed (see `references/logging-and-parallel.md`).
+
+### 2. Early Blocker Check (Before Drafting a Cover Letter)
+Read the full job description and knockout questions first. Check for hard blockers before spending tokens on a tailored cover letter:
+- Citizenship, security clearance, or unrestricted work authorization the candidate does not hold.
+- Mandatory active license/registration the candidate does not hold.
+- Hard GPA scale or degree requirement that cannot be truthfully met.
+- Note the **learnable-software rule**: missing a listed software tool never disqualifies an otherwise strong fit — never claim unconfirmed tools, and see `references/form-and-truthfulness.md`.
+If a hard blocker exists, record `skipped` or `blocked` with reason and move on.
+
+### 3. Complete Form Accurately & Q&A Memory Loop
+Fill every field strictly from `profile.md` and `answers.md`. Never fabricate licenses, dates, GPAs, employers, or skills, and never assume HR will fix a wrong checkbox.
+- **When an unanswered question appears**:
+  - Single-job mode: ask the user concisely and wait for their answer.
+  - Bulk/batch mode: leave the tab intact (place in a `Needs your input` group if supported), record `blocked` with the exact question, and continue to the next job.
+- **After the user answers a new question**, ask once:
+  > *"Should I save this answer to your `answers.md` for future applications?"*
+  Never silently edit `answers.md` without explicit user permission.
+
+### 4. Tailored 1-Page Cover Letter (When Requested or Offered)
+When the portal asks for or accepts a cover letter (and early blockers are cleared):
+1. Author a role-specific JSON spec based on `templates/cover-letter-spec.json`.
+2. Lint and build via:
+   ```bash
+   python job/scripts/coverletter/lint.py <spec.json> --rules <workspace_dir>/rules.json
+   python job/scripts/coverletter/build.py <spec.json> --rules <workspace_dir>/rules.json --out-root <workspace_dir>/output
+   ```
+3. Inspect the rendered QA PNG to verify clean 1-page visual layout before uploading.
+
+### 5. Non-Negotiable Submission Gates
+Do not click final **Submit** until every applicable gate passes (render them as a checklist card, `references/rendering.md`):
+- [ ] Resume / CV PDF is visibly attached in the portal UI (attach even when marked optional).
+- [ ] LinkedIn URL (and portfolio/GitHub if configured) is entered whenever offered.
+- [ ] Tailored cover letter is attached when requested or offered.
+- [ ] All visible required fields, dropdowns, and review-page values are verified accurate.
+- [ ] Pre-submit checkpoint (`submission_attempted`) is recorded in `applications.jsonl` immediately before clicking Submit.
+- [ ] Post-submit confirmation receipt (confirmation page text, requisition number, or confirmation email) is visibly verified.
+
+### 6. Post-Submission Logging, Review & Cleanup
+1. Record `verified` with confirmation receipt/URL in the ledger and re-render `log.md`:
+   ```bash
+   python job/scripts/ledger/ledger.py record --employer "<Employer>" --role "<Role>" --status verified --req "<ReqID>" --url "<URL>" --receipt "<Receipt>" --workspace <workspace_dir>
+   python job/scripts/ledger/ledger.py render --workspace <workspace_dir>
+   ```
+2. Save confirmation screenshot/text evidence under `<workspace_dir>/evidence/<employer-slug>/`.
+3. Deliver the review as a rendered card listing:
+   - Submitted role, employer, req ID, receipt/confirmation text, and uploaded files.
+   - Every custom question answered and every intentionally blank optional field.
+4. Safely close completed confirmation tabs one at a time after verifying live URL/title. **Never close unfinished, blocked, or unverified tabs.**
+
+## On-Demand Reference Routing
+
+Load only the reference file relevant to your current step:
+
+| When You Need To... | Read This Reference |
+| --- | --- |
+| Run first-time setup, extract CV into `profile.md`, or configure `answers.md` / `rules.json` | `references/onboarding.md` |
+| Configure/recover BrowserOS Neo, fall back to Chrome, use Codex Computer Use (`@oai/sky`), handle iframe uploads, or manage tabs | `references/browser-and-tools.md` |
+| Automate Workday, iCIMS, Paylocity, AAIM, Yello, Paycor, cookie banners, or run `scripts/neo/emit.mjs` & `jobs.mjs` | `references/ats-playbooks.md` |
+| Render a checklist, blocker notice, gate check, review, batch summary, or ledger (HTML or plain-text fallback) | `references/rendering.md` |
+| Apply truthfulness rules, wording exceptions, learnable-software framing, CV order, cover-letter structure, or email-route applications | `references/form-and-truthfulness.md` |
+| Manage ledger states, checkpoints, crash/timeout reconciliation, or coordinate parallel subagents | `references/logging-and-parallel.md` |

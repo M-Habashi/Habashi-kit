@@ -1,0 +1,33 @@
+{
+  "author_name": "Your Name",
+  "file_prefix": "Your_Name_Cover_Letter",
+  "confirmed_software": [
+    "Python",
+    "Excel"
+  ],
+  "unconfirmed_software": [
+    "UnconfirmedToolExample"
+  ],
+  "forbidden_claims": [
+    {
+      "label": "Unverified active license claim",
+      "pattern": "\\b(licensed|registered)\\s+(professional|engineer|architect)\\b"
+    }
+  ],
+  "employer_order": [
+    "Current or Primary Employer",
+    "Previous Employer"
+  ],
+  "style": {
+    "forbid_em_dash": true,
+    "forbid_long_comma_lists": true,
+    "max_pages": 1
+  },
+  "employer_aliases": [
+    [
+      "Example Engineering Corp",
+      "Example Engineering",
+      "Example Corp"
+    ]
+  ]
+}
