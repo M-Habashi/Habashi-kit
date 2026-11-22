@@ -21,6 +21,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from typing import Any
 from pathlib import Path
 
 NEO_URL_DEFAULT = "http://127.0.0.1:9010/mcp"
@@ -61,12 +62,18 @@ def kill_tree(proc: subprocess.Popen) -> None:
         proc.kill()
 
 
-def run_cmd(args: list[str], timeout: int = 30) -> tuple[int, str]:
-    """Run a command with stdin closed and output in a temp file, so neither a CLI waiting
-    for stdin nor a grandchild holding a pipe can hang the check. Kills the tree on timeout."""
-    with tempfile.TemporaryFile() as out:
+def run_cmd(args: list[str], timeout: int = 30, stdin_text: str | None = None) -> tuple[int, str]:
+    """Run a command with stdin closed (or fed from `stdin_text` via a temp file) and output in a
+    temp file, so neither a CLI waiting for stdin nor a grandchild holding a pipe can hang the
+    check. Kills the tree on timeout."""
+    with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as inp:
+        stdin: Any = subprocess.DEVNULL
+        if stdin_text is not None:
+            inp.write(stdin_text.encode("utf-8"))
+            inp.seek(0)
+            stdin = inp
         try:
-            proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT)
+            proc = subprocess.Popen(args, stdin=stdin, stdout=out, stderr=subprocess.STDOUT)
         except OSError as exc:
             return -1, str(exc)
         try:

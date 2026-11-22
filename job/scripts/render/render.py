@@ -527,7 +527,7 @@ def ledger_payload(workspace: Path, rules: Path | None = None) -> dict[str, Any]
     ]
     rows = [
         [e.get("employer", ""), e.get("role", ""), e.get("req", "") or "-", str(e.get("status", "")).lower(),
-         str(e.get("timestamp", ""))[:10], e.get("receipt") or e.get("notes") or ""]
+         str(e.get("timestamp", ""))[:10], lg.agents(e) or "-", e.get("receipt") or e.get("notes") or ""]
         for e in latest
     ]
     verified = counts.get("verified", 0)
@@ -538,7 +538,7 @@ def ledger_payload(workspace: Path, rules: Path | None = None) -> dict[str, Any]
         "blocks": [
             {"type": "kv", "heading": "Summary", "rows": kv},
             {"type": "table", "heading": "Applications",
-             "columns": ["Employer", "Role", "Req", "Status", "Updated", "Receipt / notes"], "rows": rows},
+             "columns": ["Employer", "Role", "Req", "Status", "Updated", "Done by", "Receipt / notes"], "rows": rows},
         ],
     }
 

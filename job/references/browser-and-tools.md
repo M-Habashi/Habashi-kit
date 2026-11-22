@@ -32,6 +32,23 @@ Use OS computer use whenever a specific task needs OS-level control. Typical tas
 
 `render.py tools --fix --live` checks all of this and shows one line per app (ChatGPT Codex preferred, Claude alternative). `--fix` first opens BrowserOS and the Codex app and links them by itself, so a line only shows text when the user must act. `--live` runs a read-only Codex window test (list windows, capture one). On Windows the Codex app's process is named `ChatGPT`; detect it by its install folder (`OpenAI.Codex_*`), not by name. After a Codex update, opening the app rewrites the computer-use paths in `~/.codex/config.toml` within seconds.
 
+### Handing tasks to the newest Sol model
+
+Browser automation and OS computer use run on the **newest Codex Sol model** by default.
+- **Pick it**: the `-sol` model with the highest version number (`gpt-6.2-sol` beats `gpt-6.1-sol` and `gpt-5.6-sol`), not the first one listed. In T3 Code, read it from `orchestrator_capabilities`; elsewhere, `python job/scripts/agents/codex_task.py latest`.
+- **Settings**: reasoning effort `high`, standard speed (T3 `serviceTier: default`; Codex CLI `service_tier="default"`). Use another effort or fast speed (`priority`, or `--fast`) only when the user asks. Fast speed uses more of their plan.
+- **What to hand over**: a whole task with its context, such as "apply to <job link> following job/SKILL.md Step 2 with workspace <dir>" or "find <role> jobs in <places> and return a short list". Not single clicks. Ask the helper to stop and return any question only the user can answer, then ask the user yourself.
+- **How**:
+
+| Situation | Do this |
+| --- | --- |
+| You are the newest Sol model | Do the task yourself. |
+| T3 Code tools exist | `delegate_task` to the Codex provider, model = newest Sol, options `reasoningEffort: high`, `serviceTier: default`. |
+| No T3 Code, Codex CLI installed | `python job/scripts/agents/codex_task.py run "<task>" --sent-by "<your model>" --workspace <dir>`. It runs `codex exec` on the newest Sol with effort high and standard speed, tells Codex to use Neo and per-window computer use, and prints JSON with `ok`, `done_by`, `sent_by` and `result`. Computer use still needs the Codex app running (`render.py tools --fix`). |
+| No Codex, or no Sol model | Do it yourself with Neo (and your own computer use, if you have it). Tell the user once, in plain words, that ChatGPT isn't available so you're doing it. |
+
+- **Report**: after each handed-over task, tell the user in one plain line who did it and who sent it: "Done by GPT-6.2-Sol (high, standard), sent by Claude Opus 5.5." If you did it yourself, say "Done by <your model>". Pass the same to the ledger (`--done-by`, `--sent-by`); the log and the application card show it in a "Done by" column.
+
 ## 4. Embedded ATS & Iframe File-Upload Workarounds
 
 Many ATS portals wrap forms in same-origin iframes or reuse confusing input IDs.
