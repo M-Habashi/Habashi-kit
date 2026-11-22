@@ -20,7 +20,7 @@ Check your available tools at preflight (Step 1B) and remember the result:
 
 | Moment | Command / payload |
 | --- | --- |
-| Step 1 preflight (documents + tools) | `render.py preflight --workspace <ws> --tool "BrowserOS Neo MCP=ok:Connected" --tool "OS Computer Use=optional:Not available"` (exit `2` = required items missing → pause) |
+| Step 1 startup gate (tools, then documents) | `render.py preflight --workspace <ws> --live --tool "Neo reachable from this agent=ok"` (exit `2` = blocker → fix first). Tools only: `render.py tools [--live]` |
 | Early blocker / skip notice | `card` with a `kv` block (requirement vs. profile) and an info `note`; see `examples/blocker.json` |
 | Pre-submit gate check (Step 2.5) | `card` with one `checklist`; see `examples/submit-gates.json` |
 | Post-submit review (Step 2.6) | `card` with receipt `kv`, uploaded-files `list`, Q&A `table`, blank-fields `list`; see `examples/submission-review.json` |

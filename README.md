@@ -29,10 +29,11 @@
      pnpm --dir job/scripts/neo install
      node job/scripts/neo/emit.mjs --list
      ```
-4. **Check readiness** (rendered card, or `--format text` for plain text):
+4. **Check readiness** (tools first, then documents; `--live` runs a read-only Codex computer-use test):
    ```bash
-   python job/scripts/render/render.py preflight --workspace workspace --format text
+   python job/scripts/render/render.py preflight --workspace workspace --live --format text
    ```
+   Requirements: BrowserOS Neo for all browser work; for OS-level steps, Codex CLI **plus the Codex desktop app running** with its computer-use plugin.
 5. **Point your AI agent at `job/SKILL.md`** and run your first job search or application. The skill uses BrowserOS Neo for all browser work and OS computer use (Codex Computer Use by default) only for tasks outside the browser.
 
 ## Repository Map
@@ -63,7 +64,8 @@ Habashi-kit/
     ├── scripts/                    # Deterministic CLI & browser helpers
     │   ├── init_workspace.py
     │   ├── ledger/ledger.py
-    │   ├── render/render.py        # preflight | ledger | card -> HTML or text
+    │   ├── render/render.py        # preflight | tools | ledger | card -> HTML or text
+    │   ├── render/toolcheck.py     # BrowserOS Neo + Codex computer-use checks
     │   ├── coverletter/
     │   │   ├── lint.py
     │   │   └── build.py

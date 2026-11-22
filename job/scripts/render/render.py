@@ -3,11 +3,12 @@
 
 Subcommands:
   card <payload.json | ->   Render any report payload (checklist, kv, table, list, note blocks).
-  preflight --workspace W   Inspect a workspace and render the Step 1 preflight checklist.
+  preflight --workspace W   Inspect a workspace + tools and render the Step 1 preflight checklist.
+  tools                     Check BrowserOS Neo, Codex computer use, and local scripts only.
   ledger --workspace W      Render the application ledger (latest state per role).
 
-Exit codes: 0 = rendered (preflight: all required items ready), 2 = preflight found missing
-required items, 1 = usage or input error.
+Exit codes: 0 = rendered and ready, 2 = preflight/tools found a blocker (missing required
+documents, or BrowserOS Neo not usable), 1 = usage or input error.
 """
 
 from __future__ import annotations
@@ -21,6 +22,9 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import toolcheck  # noqa: E402
 
 JOB_ROOT = Path(__file__).resolve().parents[2]
 LEDGER_PATH = JOB_ROOT / "scripts" / "ledger" / "ledger.py"
@@ -311,7 +315,8 @@ def parse_tool(spec: str) -> dict[str, str]:
     return {"label": name.strip(), "status": status, "detail": detail.strip()}
 
 
-def preflight_payload(workspace: Path, tools: list[str] | None = None) -> dict[str, Any]:
+def preflight_payload(workspace: Path, tools: list[str] | None = None, system: bool = True,
+                      live: bool = False, neo_url: str = toolcheck.NEO_URL_DEFAULT) -> dict[str, Any]:
     docs = workspace / "docs"
     pdfs = sorted(p.name for p in docs.glob("*.pdf")) if docs.is_dir() else []
     profile_text = (workspace / "profile.md").read_text(encoding="utf-8") if (workspace / "profile.md").is_file() else ""
@@ -333,26 +338,63 @@ def preflight_payload(workspace: Path, tools: list[str] | None = None) -> dict[s
          "detail": portfolio.strip("`") if portfolio and not PLACEHOLDER.search(portfolio) else "Ask if applicable"},
     ]
 
+    blocks: list[dict[str, Any]] = [
+        {"type": "checklist", "heading": "Required", "items": required},
+        {"type": "checklist", "heading": "Optional - ask if applicable", "items": optional},
+    ] + tool_blocks(tools, system, live, neo_url)
+    if any(i["status"] == "missing" for i in required):
+        blocks.append({"type": "note", "tone": "danger",
+                       "text": "Applications are paused until the required items above are provided."})
+    elif blocking(blocks):
+        blocks.append({"type": "note", "tone": "danger",
+                       "text": "BrowserOS Neo must work before applying: debug it, open/fix it with OS computer use, or ask the user to install it."})
+    return {"title": "Preflight check", "subtitle": f"Workspace: {workspace.as_posix()}", "blocks": blocks}
+
+
+def local_items() -> list[dict[str, str]]:
     neo_ready = (NEO_DIR / "node_modules" / "jsdom").is_dir()
-    tool_items = [parse_tool(t) for t in (tools or [])]
-    tool_items += [
-        {"label": "Python reportlab + pymupdf", "status": "ok" if module_ok("reportlab") and module_ok("fitz") else "warn",
-         "detail": "Cover-letter PDF + QA PNG" if module_ok("reportlab") and module_ok("fitz")
-         else "pip install reportlab pymupdf (needed for cover letters)"},
+    pdf_ok = module_ok("reportlab") and module_ok("fitz")
+    return [
+        {"label": "Python reportlab + pymupdf", "status": "ok" if pdf_ok else "warn",
+         "detail": "Cover-letter PDF + QA PNG" if pdf_ok else "pip install reportlab pymupdf (needed for cover letters)"},
         {"label": "Node.js + neo dependencies", "status": "ok" if shutil.which("node") and neo_ready else "warn",
          "detail": "emit.mjs / jobs.mjs ready" if shutil.which("node") and neo_ready
          else ("pnpm --dir job/scripts/neo install" if shutil.which("node") else "Install Node.js")},
     ]
 
-    blocks: list[dict[str, Any]] = [
-        {"type": "checklist", "heading": "Required", "items": required},
-        {"type": "checklist", "heading": "Optional - ask if applicable", "items": optional},
-        {"type": "checklist", "heading": "Tools & browser", "items": tool_items},
+
+def tool_blocks(tools: list[str] | None, system: bool, live: bool, neo_url: str) -> list[dict[str, Any]]:
+    agent_items = [parse_tool(t) for t in (tools or [])]
+    if system:
+        browser, os_use = toolcheck.system_checks(neo_url=neo_url, live=live)
+    else:
+        skipped = {"label": "System checks", "status": "skipped", "detail": "--offline"}
+        browser, os_use = [dict(skipped)], [dict(skipped)]
+    return [
+        {"type": "checklist", "heading": "Browser - BrowserOS Neo (all web work)", "items": browser + agent_items},
+        {"type": "checklist", "heading": "OS computer use - windows outside the browser", "items": os_use},
+        {"type": "checklist", "heading": "Local scripts", "items": local_items()},
     ]
-    if any(i["status"] == "missing" for i in required):
+
+
+def blocking(blocks: list[dict[str, Any]]) -> bool:
+    """True when the browser block has a missing item (applications cannot run)."""
+    return any(i["status"] in ("missing", "blocked")
+               for b in blocks if b.get("heading", "").startswith("Browser")
+               for i in b.get("items", []))
+
+
+def tools_payload(tools: list[str] | None, system: bool, live: bool, neo_url: str) -> dict[str, Any]:
+    blocks = tool_blocks(tools, system, live, neo_url)
+    os_warn = any(i["status"] == "warn" for i in blocks[1]["items"])
+    if blocking(blocks):
         blocks.append({"type": "note", "tone": "danger",
-                       "text": "Applications are paused until the required items above are provided."})
-    return {"title": "Preflight check", "subtitle": f"Workspace: {workspace.as_posix()}", "blocks": blocks}
+                       "text": "BrowserOS Neo must work before applying: debug it, open/fix it with OS computer use, or ask the user to install it."})
+    elif os_warn:
+        blocks.append({"type": "note", "tone": "warning",
+                       "text": "OS computer use is not ready: tell the user what to fix. Until then, OS-level steps go to the user."})
+    return {"title": "Tools check", "subtitle": "Browser work: BrowserOS Neo. Outside the browser: Codex Computer Use.",
+            "blocks": blocks}
 
 
 # --------------------------------------------------------------------------- ledger
@@ -419,10 +461,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_card = sub.add_parser("card", parents=[common], help="Render a payload JSON file ('-' for stdin).")
     p_card.add_argument("payload", help="Path to payload JSON, or '-' for stdin.")
 
-    p_pre = sub.add_parser("preflight", parents=[common], help="Inspect a workspace and render the preflight checklist.")
+    checks = argparse.ArgumentParser(add_help=False)
+    checks.add_argument("--tool", action="append", default=[], metavar="NAME=STATUS[:DETAIL]",
+                        help="Agent-detected item for the browser block, e.g. 'Neo reachable from this agent=ok'. Repeatable.")
+    checks.add_argument("--live", action="store_true", help="Also run a read-only Codex computer-use window test (~1 min).")
+    checks.add_argument("--neo-url", default=toolcheck.NEO_URL_DEFAULT, help="BrowserOS Neo MCP URL.")
+    checks.add_argument("--offline", action="store_true", help="Skip process, network and Codex checks.")
+
+    p_tools = sub.add_parser("tools", parents=[common, checks], help="Check BrowserOS Neo, OS computer use and local scripts.")
+    p_tools.set_defaults(workspace=None)
+
+    p_pre = sub.add_parser("preflight", parents=[common, checks], help="Inspect a workspace + tools and render the preflight checklist.")
     p_pre.add_argument("--workspace", type=Path, default=Path("workspace"))
-    p_pre.add_argument("--tool", action="append", default=[], metavar="NAME=STATUS[:DETAIL]",
-                       help="Agent-detected tool readiness, e.g. 'BrowserOS Neo=ok:Connected'. Repeatable.")
 
     p_led = sub.add_parser("ledger", parents=[common], help="Render the application ledger.")
     p_led.add_argument("--workspace", type=Path, default=Path("workspace"))
@@ -437,7 +487,9 @@ def main(argv: list[str] | None = None) -> int:
             raw = sys.stdin.read() if args.payload == "-" else Path(args.payload).read_text(encoding="utf-8")
             payload = validate(json.loads(raw))
         elif args.command == "preflight":
-            payload = preflight_payload(args.workspace, args.tool)
+            payload = preflight_payload(args.workspace, args.tool, not args.offline, args.live, args.neo_url)
+        elif args.command == "tools":
+            payload = tools_payload(args.tool, not args.offline, args.live, args.neo_url)
         else:
             payload = ledger_payload(args.workspace, args.rules)
         if args.as_json:
@@ -449,7 +501,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if args.command == "preflight":
         required = payload["blocks"][0]["items"]
-        return 2 if any(i["status"] == "missing" for i in required) else 0
+        return 2 if any(i["status"] == "missing" for i in required) or blocking(payload["blocks"]) else 0
+    if args.command == "tools":
+        return 2 if blocking(payload["blocks"]) else 0
     return 0
 
 

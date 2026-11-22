@@ -12,14 +12,25 @@ Use BrowserOS Neo for all web work. It is the user's real browser profile with l
 4. **Installed but closed, frozen, or erroring**: Use OS computer use to open BrowserOS or fix it (relaunch the app, dismiss its dialog). Close the OS session, then continue in Neo.
 5. Don't close BrowserOS windows that hold active sessions just to clear one stuck tab.
 
-## 3. OS Computer Use: Any Task Outside the Browser
+## 3. OS Computer Use: Windows Outside the Browser
 
-Use OS computer use whenever a specific task needs OS-level control. By default that's Codex Computer Use, which needs the Codex desktop app running; otherwise use your own computer-use tool. Typical tasks:
+Use OS computer use whenever a specific task needs OS-level control. Typical tasks:
 - Opening, relaunching, or fixing BrowserOS Neo.
 - Native windows a page can't reach: file pickers, "Leave site?" prompts, popup windows outside Neo.
-- Any other desktop app the task needs.
+- Any other app's window the task needs.
 
-**Rule**: name the task, do it at OS level, and **close the OS computer-use session as soon as that task is complete**. Then continue with Neo. Web-page work stays in Neo. If no OS computer-use tool is available, ask the user to do that one step.
+**It works per window, not on the whole desktop**: list the open windows, pick the one target window, then capture or act on that window. Re-list after anything changes; never reuse old coordinates or element indexes.
+
+**Rule**: name the task, do it at OS level, and **close the OS computer-use session as soon as that task is complete**. Then continue with Neo. Web-page work stays in Neo. If no OS computer-use tool is ready, ask the user to do that one step.
+
+### Which tool provides it
+
+| Agent | OS computer use available when | Not available when |
+| --- | --- | --- |
+| **Codex (default)** | Codex CLI is signed in, the **Codex desktop app is running**, and the computer-use plugin's config paths match the installed app version | The app is closed (the CLI has no computer-use engine of its own), or the app was updated and not reopened, which leaves the config pointing at a deleted folder |
+| **Claude** | The session runs inside the Claude desktop app with Computer use turned on (Settings) | Claude Code CLI in a terminal, even with the desktop app open |
+
+`render.py tools --live` checks all of this and runs a read-only Codex window test (list windows, capture one). On Windows the Codex app's process is named `ChatGPT`; detect it by its install folder (`OpenAI.Codex_*`), not by name. After a Codex update, opening the app rewrites the computer-use paths in `~/.codex/config.toml` within seconds.
 
 ## 4. Embedded ATS & Iframe File-Upload Workarounds
 

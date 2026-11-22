@@ -14,45 +14,33 @@ Show structured output (checklists, blocker notices, gate checks, reviews, batch
 - **No inline renderer**: add `--format text` and paste the plain-text output verbatim.
 - Single questions and one-line updates stay plain text. Payload format and examples: `references/rendering.md`.
 
-## Step 1: Startup Preflight Gate (Always Run First)
+## Step 1: Startup Gate (Always Run First, Tools Before Documents)
 
-Run both checks before opening job portals, drafting materials, or submitting applications.
-
-### 1A. Documents & Profile Check
-Locate the user's private workspace (default: `workspace/` or a user-specified directory) and inspect `profile.md`, `answers.md`, `rules.json`, and `docs/`.
-
-1. **Required items**:
-   - Resume / CV PDF in `docs/`.
-   - Core candidate facts in `profile.md` (contact info, links, education with exact GPA/scales, work history in preferred CV order, confirmed tools/skills).
-   - Core reusable answers in `answers.md` (work authorization & sponsorship wording, availability/start date, salary expectation rule, target roles/locations).
-   - Configured `rules.json` (author name, file prefix, confirmed/unconfirmed software lists, forbidden claims, employer order, aliases).
-2. **Optional items (ask if applicable to the user's field)**:
-   - Certifications or professional licenses.
-   - Academic transcripts.
-   - Reference list or cover-letter template.
-   - Portfolio, GitHub, or work samples.
-3. **Render the preflight card** (documents + tools from 1B in one card; it inspects the workspace for you):
+Before opening job portals, drafting materials, or submitting anything:
+1. Call Neo `tabs` with action `list` yourself. That's the only check the script can't do for you.
+2. Run one command. It checks the tools first, then the workspace:
    ```bash
-   python job/scripts/render/render.py preflight --workspace <workspace_dir> --tool "BrowserOS Neo MCP=<ok|warn>:<note>" --out <workspace_dir>/output/render/preflight.html
+   python job/scripts/render/render.py preflight --workspace <workspace_dir> --live --tool "Neo reachable from this agent=<ok|missing>:<note>" --out <workspace_dir>/output/render/preflight.html
    ```
-   Exit code `2` means required items are missing: pause until the user provides them. If the workspace doesn't exist yet, create it first with:
-   ```bash
-   python job/scripts/init_workspace.py <workspace_dir>
-   ```
-   Then extract CV facts once into `profile.md` (see `references/onboarding.md`). During normal runs, read `profile.md` instead of re-parsing the PDF; reopen the PDF only for uploads or profile updates.
+   If the workspace doesn't exist yet, run `python job/scripts/init_workspace.py <workspace_dir>` first. Exit code `2` means a blocker: BrowserOS Neo isn't usable, or required documents are missing. Fix it (1A/1B) before anything else. Use `render.py tools` to recheck only the tools.
 
-### 1B. Tools & Browser Readiness Check
-Verify available execution tools and report readiness upfront:
-
+### 1A. Tools: Browser vs. OS Computer Use
 1. **Browser = BrowserOS Neo, always.** Do all web work in Neo: pages, forms, uploads, tabs, and saved passwords. Don't switch to another browser.
    - If Neo can't be reached or a call errors, check and debug it (is BrowserOS running, does the MCP answer, retry).
    - Not installed: stop and ask the user to install BrowserOS Neo.
    - Installed but closed or broken: use OS computer use to open or fix it, then continue in Neo.
-2. **OS computer use = anything outside the browser.** Whenever a specific task needs OS-level control (opening or fixing BrowserOS, a native file dialog, another desktop app), do it with OS computer use. As soon as that task is done, close the OS computer-use session and continue in Neo.
-3. **Local Script Dependencies (Optional but Recommended)**:
-   - Python `reportlab` + `pymupdf` (`fitz`) for `scripts/coverletter/build.py` (1-page PDF + QA PNG rendering).
-   - Node.js (and `pnpm --dir job/scripts/neo install` for `jobs.mjs`) for `scripts/neo/emit.mjs` and `jobs.mjs`.
+2. **OS computer use = windows outside the browser.** Whenever a specific task needs OS-level control (opening or fixing BrowserOS, a native file dialog, another app's window), do it with OS computer use. It works **one window at a time**: list windows, pick the target window, then capture or act on that window. Never ask for a whole-desktop screenshot. As soon as the task is done, close the OS computer-use session and continue in Neo.
+   - **Default: Codex Computer Use.** It needs the Codex CLI signed in, **the Codex desktop app running** (the app hosts computer use; the CLI can't do it alone), and the computer-use plugin with config paths that match the installed app (opening the app refreshes them after an update). `--live` proves it with a read-only window test.
+   - **Claude** has OS computer use only in sessions inside the Claude desktop app with Computer use turned on. Claude Code CLI has none.
+   - If any OS computer-use item shows **Check**, tell the user the fix from the card (e.g. "Open the Codex app") and continue. Until it's fixed, OS-level steps go to the user.
+3. **Local scripts**: Python `reportlab` + `pymupdf` for cover letters; Node.js (+ `pnpm --dir job/scripts/neo install`) for `scripts/neo/`.
 4. **Renderer**: note whether an inline HTML render tool exists. This sets `html` or `text` mode for the whole session (see Output Rendering above).
+
+### 1B. Documents & Profile
+The preflight card inspects the workspace (`workspace/` by default) for you:
+1. **Required**: Resume / CV PDF in `docs/`; `profile.md` (contact info, links, education with exact GPA/scales, work history in CV order, confirmed skills); `answers.md` (work authorization & sponsorship wording, start date, salary rule, target roles/locations); `rules.json` (author name, file prefix, software lists, forbidden claims, employer order, aliases).
+2. **Optional (ask if applicable)**: certifications or licenses, transcripts, references or a cover-letter template, portfolio/GitHub/work samples.
+3. If required items are missing, pause until the user provides them. Then extract CV facts once into `profile.md` (see `references/onboarding.md`). During normal runs, read `profile.md` instead of re-parsing the PDF; reopen the PDF only for uploads or profile updates.
 
 ## Step 2: Core Workflow (Single Job or Batch)
 
