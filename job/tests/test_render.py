@@ -158,3 +158,19 @@ def test_next_walks_the_user_through_setup_and_applications(tmp_path: Path) -> N
     assert next_action(ws) == "answer_waiting"
     text = run(RENDER, "next", "--workspace", str(ws), "--offline", "--format", "text").stdout
     assert "Northstar" in text and re.search(r"Waiting on you\s+1", text) and "1 application needs" in text
+
+
+def test_html_cards_theme_for_light_and_dark() -> None:
+    sys.path.insert(0, str(RENDER.parent))
+    import render  # noqa: E402
+
+    css = render.CSS
+    assert "color-scheme:light dark" in css and "prefers-color-scheme:dark" in css
+    assert ':root[data-theme="dark"]' in css and ':root:not([data-theme="light"])' in css
+    # every color in the component rules comes from a token, never a fixed hex value
+    rules = css.split(".hk{font-family", 1)[1]
+    assert not re.search(r"#[0-9a-fA-F]{3,6}\b", rules)
+    assert all(v.startswith("var(--hk-") for v in render.TONES.values())
+    # both fallback palettes define every token
+    for name in ("fg", "muted", "ok", "bad", "warn", "info"):
+        assert css.count(f"--hk-fb-{name}:") == 3, name
