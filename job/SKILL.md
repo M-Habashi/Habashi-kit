@@ -7,6 +7,14 @@ description: Reusable, domain-agnostic job-search and job-application skill with
 
 A structured, progressive-disclosure workflow for discovering roles, filling ATS forms truthfully, generating tailored 1-page cover letters, and recording verified submissions. Keep this file as your runbook and load files from `references/` only when needed.
 
+## The User Is Not Technical
+
+Users are job seekers, not programmers. In everything you say to them:
+- Use plain words. No commands, file names, code, or terms like MCP, CLI, JSON, or plugin.
+- Do every technical step yourself: run scripts, edit `profile.md`/`answers.md`/`rules.json`, set up tools, open apps. Never ask the user to run a command or edit a file.
+- Ask the user only for what only they can do: share documents, answer questions about themselves, install an app, sign in, open or reopen an app. Give one short step at a time.
+- Fill as much as you can from their resume first, then ask only for what's still missing.
+
 ## Output Rendering (Default for Every Report)
 
 Show structured output (checklists, blocker notices, gate checks, reviews, batch summaries, the ledger) as a **rendered card**, never as hand-formatted Markdown:
@@ -18,11 +26,12 @@ Show structured output (checklists, blocker notices, gate checks, reviews, batch
 
 Before opening job portals, drafting materials, or submitting anything:
 1. Call Neo `tabs` with action `list` yourself. That's the only check the script can't do for you.
-2. Run one command. It checks the tools first, then the workspace:
+2. Run one command. It checks the apps first, then the documents. `--fix` first does every fix it can by itself (opens BrowserOS and the ChatGPT Codex app, links them, sets up helper tools):
    ```bash
-   python job/scripts/render/render.py preflight --workspace <workspace_dir> --live --tool "Neo reachable from this agent=<ok|missing>:<note>" --out <workspace_dir>/output/render/preflight.html
+   python job/scripts/render/render.py preflight --workspace <workspace_dir> --fix --live --neo-agent <ok|error:message> [--claude-computer-use yes] --out <workspace_dir>/output/render/preflight.html
    ```
-   If the workspace doesn't exist yet, run `python job/scripts/init_workspace.py <workspace_dir>` first. Exit code `2` means a blocker: BrowserOS Neo isn't usable, or required documents are missing. Fix it (1A/1B) before anything else. Use `render.py tools` to recheck only the tools.
+   Pass `--claude-computer-use yes` only if you are Claude inside the Claude desktop app with computer-use tools. If the workspace doesn't exist yet, run `python job/scripts/init_workspace.py <workspace_dir>` first.
+3. The card has **one line per app**: the browser, the ChatGPT Codex app (preferred), the Claude app (alternative), and helper tools. A line shows text only when something is wrong, and that text is already a plain-language step for the user. If everything is ready, show the card and move on. Otherwise show it and ask for the first step only. Exit code `2` means a blocker (the browser isn't usable, or required documents are missing): resolve it before anything else. `render.py tools --fix` rechecks just the apps.
 
 ### 1A. Tools: Browser vs. OS Computer Use
 1. **Browser = BrowserOS Neo, always.** Do all web work in Neo: pages, forms, uploads, tabs, and saved passwords. Don't switch to another browser.
@@ -30,17 +39,17 @@ Before opening job portals, drafting materials, or submitting anything:
    - Not installed: stop and ask the user to install BrowserOS Neo.
    - Installed but closed or broken: use OS computer use to open or fix it, then continue in Neo.
 2. **OS computer use = windows outside the browser.** Whenever a specific task needs OS-level control (opening or fixing BrowserOS, a native file dialog, another app's window), do it with OS computer use. It works **one window at a time**: list windows, pick the target window, then capture or act on that window. Never ask for a whole-desktop screenshot. As soon as the task is done, close the OS computer-use session and continue in Neo.
-   - **Default: Codex Computer Use.** It needs the Codex CLI signed in, **the Codex desktop app running** (the app hosts computer use; the CLI can't do it alone), and the computer-use plugin with config paths that match the installed app (opening the app refreshes them after an update). `--live` proves it with a read-only window test.
-   - **Claude** has OS computer use only in sessions inside the Claude desktop app with Computer use turned on. Claude Code CLI has none.
-   - If any OS computer-use item shows **Check**, tell the user the fix from the card (e.g. "Open the Codex app") and continue. Until it's fixed, OS-level steps go to the user.
-3. **Local scripts**: Python `reportlab` + `pymupdf` for cover letters; Node.js (+ `pnpm --dir job/scripts/neo install`) for `scripts/neo/`.
+   - **Preferred: ChatGPT / Codex.** Computer use and browser automation need the Codex CLI signed in, **the Codex (ChatGPT) desktop app running** (the CLI can't do computer use alone), the computer-use plugin with paths matching the installed app, and Neo registered in Codex. `--live` proves it with a read-only window test.
+   - **Alternative: Claude.** The user can use Claude instead, whichever works for them. Claude has computer use only in sessions inside the Claude desktop app with Computer use turned on; Claude Code CLI has none.
+   - If neither agent is ready, tell the user the fix shown on the card and continue. Until one works, OS-level steps go to the user.
+3. **Helper tools**: Python `reportlab` + `pymupdf` for cover letters; Node.js packages for `scripts/neo/`. `--fix` installs them; only a missing Node.js needs the user.
 4. **Renderer**: note whether an inline HTML render tool exists. This sets `html` or `text` mode for the whole session (see Output Rendering above).
 
 ### 1B. Documents & Profile
 The preflight card inspects the workspace (`workspace/` by default) for you:
 1. **Required**: Resume / CV PDF in `docs/`; `profile.md` (contact info, links, education with exact GPA/scales, work history in CV order, confirmed skills); `answers.md` (work authorization & sponsorship wording, start date, salary rule, target roles/locations); `rules.json` (author name, file prefix, software lists, forbidden claims, employer order, aliases).
 2. **Optional (ask if applicable)**: certifications or licenses, transcripts, references or a cover-letter template, portfolio/GitHub/work samples.
-3. If required items are missing, pause until the user provides them. Then extract CV facts once into `profile.md` (see `references/onboarding.md`). During normal runs, read `profile.md` instead of re-parsing the PDF; reopen the PDF only for uploads or profile updates.
+3. If required items are missing, ask for the resume first, fill everything you can from it yourself, then ask plain questions for the rest. Extract CV facts once into `profile.md` (see `references/onboarding.md`). During normal runs, read `profile.md` instead of re-parsing the PDF; reopen the PDF only for uploads or profile updates.
 
 ## Step 2: Core Workflow (Single Job or Batch)
 

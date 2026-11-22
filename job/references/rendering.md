@@ -20,7 +20,7 @@ Check your available tools at preflight (Step 1B) and remember the result:
 
 | Moment | Command / payload |
 | --- | --- |
-| Step 1 startup gate (tools, then documents) | `render.py preflight --workspace <ws> --live --tool "Neo reachable from this agent=ok"` (exit `2` = blocker → fix first). Tools only: `render.py tools [--live]` |
+| Step 1 startup gate (tools, then documents) | `render.py preflight --workspace <ws> --fix --live --neo-agent ok` (exit `2` = blocker → resolve first). Apps only: `render.py tools --fix --live --neo-agent ok`. One line per app; text appears only when the user must do something, written in plain words |
 | Early blocker / skip notice | `card` with a `kv` block (requirement vs. profile) and an info `note`; see `examples/blocker.json` |
 | Pre-submit gate check (Step 2.5) | `card` with one `checklist`; see `examples/submit-gates.json` |
 | Post-submit review (Step 2.6) | `card` with receipt `kv`, uploaded-files `list`, Q&A `table`, blank-fields `list`; see `examples/submission-review.json` |

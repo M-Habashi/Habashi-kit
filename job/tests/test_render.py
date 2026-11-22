@@ -83,8 +83,9 @@ def test_preflight_fresh_workspace_pauses(tmp_path: Path) -> None:
     res = run(RENDER, "preflight", "--workspace", str(ws), "--format", "text", "--offline",
               "--tool", "BrowserOS Neo MCP=warn:Not connected")
     assert res.returncode == 2
-    assert "MISSING  Resume / CV PDF" in res.stdout
-    assert "Unfilled: Full Name" in res.stdout and "author_name" in res.stdout
+    assert "MISSING   Your resume" in res.stdout
+    assert "Still needed: full name" in res.stdout and "job history order" in res.stdout
+    assert ".md" not in res.stdout and "json" not in res.stdout.lower()  # no file names for non-technical users
     assert "BrowserOS Neo MCP - Not connected" in res.stdout
 
 
@@ -96,7 +97,7 @@ def test_preflight_filled_workspace_passes_and_writes_file(tmp_path: Path) -> No
     res = run(RENDER, "preflight", "--workspace", str(ws), "--offline", "--out", str(out))
     assert res.returncode == 0, res.stdout + res.stderr
     html = out.read_text(encoding="utf-8")
-    assert "docs/Sample_Resume.pdf" in html and "Applications are paused" not in html
+    assert "Your resume" in html and "pause applications" not in html
 
 
 def test_preflight_rejects_bad_tool_flag(tmp_path: Path) -> None:
@@ -120,9 +121,11 @@ def test_ledger_render(tmp_path: Path) -> None:
 
 def test_tools_offline_and_blocking_neo(tmp_path: Path) -> None:
     res = run(RENDER, "tools", "--offline", "--format", "text")
-    assert res.returncode == 0 and "Browser - BrowserOS Neo" in res.stdout and "SKIPPED" in res.stdout
-    blocked = run(RENDER, "tools", "--offline", "--format", "text", "--tool", "Neo reachable from this agent=missing:refused")
-    assert blocked.returncode == 2 and "must work before applying" in blocked.stdout
+    assert res.returncode == 0 and "Browser (BrowserOS)" in res.stdout and "SKIPPED" in res.stdout
+    tools_lines = [l for l in res.stdout.splitlines() if l.startswith("  ")]
+    assert len(tools_lines) == 4  # one line per tool: Neo, ChatGPT/Codex, Claude, local scripts
+    blocked = run(RENDER, "tools", "--offline", "--format", "text", "--neo-agent", "error:refused")
+    assert blocked.returncode == 2 and "browser must work" in blocked.stdout and "MCP" not in blocked.stdout
 
 
 def test_preflight_blocks_on_unusable_neo(tmp_path: Path) -> None:
@@ -130,5 +133,5 @@ def test_preflight_blocks_on_unusable_neo(tmp_path: Path) -> None:
     run(INIT, str(ws))
     fill_workspace(ws)
     res = run(RENDER, "preflight", "--workspace", str(ws), "--offline", "--format", "text",
-              "--tool", "Neo reachable from this agent=missing:refused")
-    assert res.returncode == 2 and "BrowserOS Neo must work" in res.stdout
+              "--neo-agent", "error:refused")
+    assert res.returncode == 2 and "browser must work" in res.stdout

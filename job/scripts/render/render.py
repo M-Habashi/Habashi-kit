@@ -273,32 +273,43 @@ def unfilled(text: str, labels: tuple[str, ...]) -> list[str]:
     return out
 
 
+PLAIN_NAMES = {
+    "Full Name": "full name", "Email": "email", "Phone": "phone", "Location": "city/location",
+    "LinkedIn": "LinkedIn link",
+    "Authorized to Work in Target Country Today?": "work authorization",
+    "Will You Now or in the Future Require Visa Sponsorship?": "visa sponsorship",
+    "Earliest Available Start Date": "start date", "Salary Expectation Rule": "salary preference",
+    "Target Roles": "jobs you want", "Target Locations / Work Mode": "where you want to work",
+}
+
+
 def check_md(path: Path, labels: tuple[str, ...], name: str, purpose: str) -> dict[str, str]:
     if not path.is_file():
-        return {"label": name, "status": "missing", "detail": "File not found - run init_workspace.py"}
+        return {"label": name, "status": "missing", "detail": "Not set up yet. I'll create it."}
     text = path.read_text(encoding="utf-8")
     missing = unfilled(text, labels)
     if missing:
-        return {"label": name, "status": "missing", "detail": "Unfilled: " + ", ".join(missing)}
-    left = len(PLACEHOLDER.findall(text))
-    if left:
-        return {"label": name, "status": "warn", "detail": f"{purpose} filled; {left} other placeholder(s) left"}
-    return {"label": name, "status": "ok", "detail": purpose + " filled"}
+        return {"label": name, "status": "missing",
+                "detail": "Still needed: " + ", ".join(PLAIN_NAMES.get(m, m) for m in missing)}
+    if PLACEHOLDER.findall(text):
+        return {"label": name, "status": "warn", "detail": "A few optional details are still blank."}
+    return {"label": name, "status": "ok", "detail": ""}
 
 
 def check_rules(path: Path) -> dict[str, str]:
     if not path.is_file():
-        return {"label": "rules.json", "status": "missing", "detail": "File not found - run init_workspace.py"}
+        return {"label": "Cover-letter settings", "status": "missing", "detail": "Not set up yet. I'll create it."}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        return {"label": "rules.json", "status": "missing", "detail": f"Invalid JSON: {exc.msg} (line {exc.lineno})"}
+        return {"label": "Cover-letter settings", "status": "missing", "detail": "The settings file is damaged. I'll rebuild it."}
     stale = [k for k, default in RULES_DEFAULTS.items() if str(data.get(k, default)).strip() in ("", default)]
     if "Current or Primary Employer" in data.get("employer_order", []):
         stale.append("employer_order")
     if stale:
-        return {"label": "rules.json", "status": "missing", "detail": "Still template values: " + ", ".join(stale)}
-    return {"label": "rules.json", "status": "ok", "detail": "Author, file prefix and employer order set"}
+        return {"label": "Cover-letter settings", "status": "missing",
+                "detail": "Still needed: your name, file name, and job history order. I'll fill these from your resume."}
+    return {"label": "Cover-letter settings", "status": "ok", "detail": ""}
 
 
 def module_ok(name: str) -> bool:
@@ -316,85 +327,117 @@ def parse_tool(spec: str) -> dict[str, str]:
 
 
 def preflight_payload(workspace: Path, tools: list[str] | None = None, system: bool = True,
-                      live: bool = False, neo_url: str = toolcheck.NEO_URL_DEFAULT) -> dict[str, Any]:
+                      live: bool = False, neo_url: str = toolcheck.NEO_URL_DEFAULT,
+                      neo_agent: str | None = None, claude_cu: str | None = None,
+                      fix: bool = False) -> dict[str, Any]:
     docs = workspace / "docs"
     pdfs = sorted(p.name for p in docs.glob("*.pdf")) if docs.is_dir() else []
-    profile_text = (workspace / "profile.md").read_text(encoding="utf-8") if (workspace / "profile.md").is_file() else ""
-    portfolio = field_value(profile_text, "Portfolio / GitHub / Website") or ""
-
-    required = [
-        {"label": "Resume / CV PDF", "status": "ok" if pdfs else "missing",
-         "detail": ", ".join(f"docs/{p}" for p in pdfs) if pdfs else "Add your resume PDF to docs/"},
-        check_md(workspace / "profile.md", PROFILE_REQUIRED, "profile.md", "Contact header"),
-        check_md(workspace / "answers.md", ANSWERS_REQUIRED, "answers.md", "Authorization, availability, salary and targets"),
+    documents = [
+        {"label": "Your resume", "status": "ok" if pdfs else "missing",
+         "detail": "" if pdfs else "Please share your resume as a PDF file."},
+        check_md(workspace / "profile.md", PROFILE_REQUIRED, "Your profile", "Contact header"),
+        check_md(workspace / "answers.md", ANSWERS_REQUIRED, "Your standard answers", "Authorization, availability, salary and targets"),
         check_rules(workspace / "rules.json"),
+        {"label": "Extras (if you have them)", "status": "optional",
+         "detail": "Certificates or licenses, transcripts, references, portfolio"},
     ]
-    optional = [
-        {"label": "Certifications / licenses", "status": "optional", "detail": "Ask if applicable to the field"},
-        {"label": "Academic transcripts", "status": "optional", "detail": "Ask if applicable"},
-        {"label": "Cover-letter template or references", "status": "optional", "detail": "Ask if applicable"},
-        {"label": "Portfolio / GitHub / work samples",
-         "status": "ok" if portfolio and not PLACEHOLDER.search(portfolio) else "optional",
-         "detail": portfolio.strip("`") if portfolio and not PLACEHOLDER.search(portfolio) else "Ask if applicable"},
-    ]
-
     blocks: list[dict[str, Any]] = [
-        {"type": "checklist", "heading": "Required", "items": required},
-        {"type": "checklist", "heading": "Optional - ask if applicable", "items": optional},
-    ] + tool_blocks(tools, system, live, neo_url)
-    if any(i["status"] == "missing" for i in required):
-        blocks.append({"type": "note", "tone": "danger",
-                       "text": "Applications are paused until the required items above are provided."})
-    elif blocking(blocks):
-        blocks.append({"type": "note", "tone": "danger",
-                       "text": "BrowserOS Neo must work before applying: debug it, open/fix it with OS computer use, or ask the user to install it."})
-    return {"title": "Preflight check", "subtitle": f"Workspace: {workspace.as_posix()}", "blocks": blocks}
-
-
-def local_items() -> list[dict[str, str]]:
-    neo_ready = (NEO_DIR / "node_modules" / "jsdom").is_dir()
-    pdf_ok = module_ok("reportlab") and module_ok("fitz")
-    return [
-        {"label": "Python reportlab + pymupdf", "status": "ok" if pdf_ok else "warn",
-         "detail": "Cover-letter PDF + QA PNG" if pdf_ok else "pip install reportlab pymupdf (needed for cover letters)"},
-        {"label": "Node.js + neo dependencies", "status": "ok" if shutil.which("node") and neo_ready else "warn",
-         "detail": "emit.mjs / jobs.mjs ready" if shutil.which("node") and neo_ready
-         else ("pnpm --dir job/scripts/neo install" if shutil.which("node") else "Install Node.js")},
+        tools_block(tools, system, live, neo_url, neo_agent, claude_cu, fix),
+        {"type": "checklist", "heading": "Your documents", "items": documents},
     ]
+    if blocking(blocks):
+        blocks.append({"type": "note", "tone": "danger", "text": NEO_BLOCKED})
+    elif any(i["status"] == "missing" for i in documents):
+        blocks.append({"type": "note", "tone": "danger",
+                       "text": "I'll pause applications until the items above are ready. I'll fill most of them from your resume."})
+    elif agent_note(blocks[0]):
+        blocks.append(agent_note(blocks[0]))
+    return {"title": "Setup check", "blocks": blocks}
 
 
-def tool_blocks(tools: list[str] | None, system: bool, live: bool, neo_url: str) -> list[dict[str, Any]]:
-    agent_items = [parse_tool(t) for t in (tools or [])]
+NEO_BLOCKED = "The browser must work before I can apply for you. See the browser line above."
+NO_AGENT = ("Neither app can control other apps yet, so I'll ask you for the occasional click. "
+            "See the lines above to fix it.")
+
+
+def local_problems() -> list[str]:
+    problems = []
+    if not (module_ok("reportlab") and module_ok("fitz")):
+        problems.append("python")
+    if not shutil.which("node"):
+        problems.append("node")
+    elif not (NEO_DIR / "node_modules" / "jsdom").is_dir():
+        problems.append("neo")
+    return problems
+
+
+def fix_local(problems: list[str]) -> None:
+    """Agent-side setup of the helper tools; the user never runs these."""
+    if "python" in problems:
+        toolcheck.run_cmd([sys.executable, "-m", "pip", "install", "--quiet", "reportlab", "pymupdf"], timeout=300)
+        importlib.invalidate_caches()
+    if "neo" in problems:
+        pnpm = shutil.which("pnpm")
+        if pnpm:
+            toolcheck.run_cmd([pnpm, "--dir", str(NEO_DIR), "install"], timeout=300)
+
+
+def local_item(fix: bool = False) -> dict[str, str]:
+    problems = local_problems()
+    if problems and fix:
+        fix_local(problems)
+        problems = local_problems()
+    if not problems:
+        return {"label": "Helper tools", "status": "ok", "detail": ""}
+    if problems == ["node"]:
+        return {"label": "Helper tools", "status": "warn", "detail": "Please install Node.js (nodejs.org), then tell me."}
+    return {"label": "Helper tools", "status": "warn",
+            "detail": "Some helper tools are missing. I'll set them up before making cover letters."}
+
+
+def tools_block(tools: list[str] | None, system: bool, live: bool, neo_url: str,
+                neo_agent: str | None = None, claude_cu: str | None = None, fix: bool = False) -> dict[str, Any]:
     if system:
-        browser, os_use = toolcheck.system_checks(neo_url=neo_url, live=live)
+        neo, chatgpt, claude = toolcheck.system_items(neo_url, live, neo_agent, claude_cu, fix)
     else:
-        skipped = {"label": "System checks", "status": "skipped", "detail": "--offline"}
-        browser, os_use = [dict(skipped)], [dict(skipped)]
-    return [
-        {"type": "checklist", "heading": "Browser - BrowserOS Neo (all web work)", "items": browser + agent_items},
-        {"type": "checklist", "heading": "OS computer use - windows outside the browser", "items": os_use},
-        {"type": "checklist", "heading": "Local scripts", "items": local_items()},
-    ]
+        skipped = {"label": "", "status": "skipped", "detail": "--offline"}
+        neo = dict(skipped, label=toolcheck.BROWSER)
+        if neo_agent and neo_agent.lower().startswith("error"):
+            neo = {"label": neo["label"], "status": "missing",
+                   "detail": "I can't connect to BrowserOS. Please close and reopen it, then tell me."}
+        chatgpt = dict(skipped, label=toolcheck.CHATGPT)
+        claude = dict(skipped, label=toolcheck.CLAUDE)
+    # whichever agent works is fine; the preferred one only alarms when neither works
+    if chatgpt["status"] == "warn" and claude["status"] == "ok":
+        chatgpt = dict(chatgpt, status="optional", detail="Not ready, so I'm using the Claude app. " + chatgpt["detail"])
+    if chatgpt["status"] == "ok" and claude["status"] == "optional":
+        claude = dict(claude, detail="")  # nothing to act on while the preferred agent works
+    items = [neo, chatgpt, claude, local_item(fix and system)] + [parse_tool(t) for t in (tools or [])]
+    return {"type": "checklist", "heading": "Apps", "items": items}
+
+
+def agent_note(block: dict[str, Any]) -> dict[str, Any] | None:
+    agents = [i for i in block["items"] if i["label"] in (toolcheck.CHATGPT, toolcheck.CLAUDE)]
+    if agents and all(i["status"] not in ("ok", "skipped") for i in agents):
+        return {"type": "note", "tone": "warning", "text": NO_AGENT}
+    return None
 
 
 def blocking(blocks: list[dict[str, Any]]) -> bool:
-    """True when the browser block has a missing item (applications cannot run)."""
-    return any(i["status"] in ("missing", "blocked")
-               for b in blocks if b.get("heading", "").startswith("Browser")
-               for i in b.get("items", []))
+    """True when BrowserOS Neo is unusable (applications cannot run)."""
+    return any(i["label"] == toolcheck.BROWSER and i["status"] in ("missing", "blocked")
+               for b in blocks for i in b.get("items", []))
 
 
-def tools_payload(tools: list[str] | None, system: bool, live: bool, neo_url: str) -> dict[str, Any]:
-    blocks = tool_blocks(tools, system, live, neo_url)
-    os_warn = any(i["status"] == "warn" for i in blocks[1]["items"])
+def tools_payload(tools: list[str] | None, system: bool, live: bool, neo_url: str,
+                  neo_agent: str | None = None, claude_cu: str | None = None, fix: bool = False) -> dict[str, Any]:
+    block = tools_block(tools, system, live, neo_url, neo_agent, claude_cu, fix)
+    blocks = [block]
     if blocking(blocks):
-        blocks.append({"type": "note", "tone": "danger",
-                       "text": "BrowserOS Neo must work before applying: debug it, open/fix it with OS computer use, or ask the user to install it."})
-    elif os_warn:
-        blocks.append({"type": "note", "tone": "warning",
-                       "text": "OS computer use is not ready: tell the user what to fix. Until then, OS-level steps go to the user."})
-    return {"title": "Tools check", "subtitle": "Browser work: BrowserOS Neo. Outside the browser: Codex Computer Use.",
-            "blocks": blocks}
+        blocks.append({"type": "note", "tone": "danger", "text": NEO_BLOCKED})
+    elif agent_note(block):
+        blocks.append(agent_note(block))
+    return {"title": "App check", "blocks": blocks}
 
 
 # --------------------------------------------------------------------------- ledger
@@ -467,6 +510,12 @@ def build_parser() -> argparse.ArgumentParser:
     checks.add_argument("--live", action="store_true", help="Also run a read-only Codex computer-use window test (~1 min).")
     checks.add_argument("--neo-url", default=toolcheck.NEO_URL_DEFAULT, help="BrowserOS Neo MCP URL.")
     checks.add_argument("--offline", action="store_true", help="Skip process, network and Codex checks.")
+    checks.add_argument("--fix", action="store_true",
+                        help="Fix agent-side problems first: open BrowserOS and the Codex app, link them, set up helper tools.")
+    checks.add_argument("--neo-agent", default=None, metavar="ok|error:<message>",
+                        help="Result of this agent's own Neo `tabs list` call.")
+    checks.add_argument("--claude-computer-use", choices=("yes", "no"), default=None,
+                        help="yes = this agent is Claude inside the desktop app with computer-use tools.")
 
     p_tools = sub.add_parser("tools", parents=[common, checks], help="Check BrowserOS Neo, OS computer use and local scripts.")
     p_tools.set_defaults(workspace=None)
@@ -487,9 +536,11 @@ def main(argv: list[str] | None = None) -> int:
             raw = sys.stdin.read() if args.payload == "-" else Path(args.payload).read_text(encoding="utf-8")
             payload = validate(json.loads(raw))
         elif args.command == "preflight":
-            payload = preflight_payload(args.workspace, args.tool, not args.offline, args.live, args.neo_url)
+            payload = preflight_payload(args.workspace, args.tool, not args.offline, args.live, args.neo_url,
+                                        args.neo_agent, args.claude_computer_use, args.fix)
         elif args.command == "tools":
-            payload = tools_payload(args.tool, not args.offline, args.live, args.neo_url)
+            payload = tools_payload(args.tool, not args.offline, args.live, args.neo_url,
+                                    args.neo_agent, args.claude_computer_use, args.fix)
         else:
             payload = ledger_payload(args.workspace, args.rules)
         if args.as_json:
@@ -500,8 +551,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
     if args.command == "preflight":
-        required = payload["blocks"][0]["items"]
-        return 2 if any(i["status"] == "missing" for i in required) or blocking(payload["blocks"]) else 0
+        docs = next(b["items"] for b in payload["blocks"] if b.get("heading") == "Your documents")
+        return 2 if any(i["status"] == "missing" for i in docs) or blocking(payload["blocks"]) else 0
     if args.command == "tools":
         return 2 if blocking(payload["blocks"]) else 0
     return 0

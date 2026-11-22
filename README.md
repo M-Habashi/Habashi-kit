@@ -31,7 +31,7 @@
      ```
 4. **Check readiness** (tools first, then documents; `--live` runs a read-only Codex computer-use test):
    ```bash
-   python job/scripts/render/render.py preflight --workspace workspace --live --format text
+   python job/scripts/render/render.py preflight --workspace workspace --fix --live --format text
    ```
    Requirements: BrowserOS Neo for all browser work; for OS-level steps, Codex CLI **plus the Codex desktop app running** with its computer-use plugin.
 5. **Point your AI agent at `job/SKILL.md`** and run your first job search or application. The skill uses BrowserOS Neo for all browser work and OS computer use (Codex Computer Use by default) only for tasks outside the browser.

@@ -30,7 +30,7 @@ Use OS computer use whenever a specific task needs OS-level control. Typical tas
 | **Codex (default)** | Codex CLI is signed in, the **Codex desktop app is running**, and the computer-use plugin's config paths match the installed app version | The app is closed (the CLI has no computer-use engine of its own), or the app was updated and not reopened, which leaves the config pointing at a deleted folder |
 | **Claude** | The session runs inside the Claude desktop app with Computer use turned on (Settings) | Claude Code CLI in a terminal, even with the desktop app open |
 
-`render.py tools --live` checks all of this and runs a read-only Codex window test (list windows, capture one). On Windows the Codex app's process is named `ChatGPT`; detect it by its install folder (`OpenAI.Codex_*`), not by name. After a Codex update, opening the app rewrites the computer-use paths in `~/.codex/config.toml` within seconds.
+`render.py tools --fix --live` checks all of this and shows one line per app (ChatGPT Codex preferred, Claude alternative). `--fix` first opens BrowserOS and the Codex app and links them by itself, so a line only shows text when the user must act. `--live` runs a read-only Codex window test (list windows, capture one). On Windows the Codex app's process is named `ChatGPT`; detect it by its install folder (`OpenAI.Codex_*`), not by name. After a Codex update, opening the app rewrites the computer-use paths in `~/.codex/config.toml` within seconds.
 
 ## 4. Embedded ATS & Iframe File-Upload Workarounds
 

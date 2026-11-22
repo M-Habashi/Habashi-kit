@@ -57,7 +57,29 @@ def test_run_cmd_closes_stdin_and_times_out() -> None:
     assert code == -1 and "timed out" in out and time.monotonic() - start < 20
 
 
-def test_codex_checks_without_cli(monkeypatch) -> None:
+def test_chatgpt_item_reports_first_problem_with_fix(monkeypatch) -> None:
     monkeypatch.setattr(toolcheck.shutil, "which", lambda name: None)
-    items = toolcheck.codex_checks([])
-    assert items[0]["status"] == "warn" and "handed to the user" in items[0]["detail"]
+    entry = toolcheck.chatgpt_item([])
+    assert entry["status"] == "warn" and "isn't installed" in entry["detail"]
+    monkeypatch.setattr(toolcheck.shutil, "which", lambda name: "codex")
+    monkeypatch.setattr(toolcheck, "run_cmd", lambda args, timeout=30: (0, "Logged in using ChatGPT"))
+    entry = toolcheck.chatgpt_item([])  # app not running
+    assert entry["status"] == "warn" and "open the ChatGPT Codex app" in entry["detail"]
+
+
+def test_neo_item_is_one_line_with_fix(monkeypatch) -> None:
+    monkeypatch.setattr(toolcheck, "browseros_install_paths", lambda: [])
+    entry = toolcheck.neo_item([], "http://127.0.0.1:9/mcp")
+    assert entry["status"] == "missing" and "install BrowserOS" in entry["detail"]
+    monkeypatch.setattr(toolcheck, "browseros_install_paths", lambda: [Path("x")])
+    monkeypatch.setattr(toolcheck, "browseros_running", lambda procs: True)
+    monkeypatch.setattr(toolcheck, "mcp_answers", lambda url, timeout=3.0: (True, "HTTP 406"))
+    assert toolcheck.neo_item([], "u")["detail"] == ""
+    assert "can't connect" in toolcheck.neo_item([], "u", "error: refused")["detail"]
+
+
+def test_user_facing_text_has_no_jargon() -> None:
+    jargon = ("mcp", "cli", "json", "config", "plugin path", "run:", "pnpm", "pip ")
+    texts = list(toolcheck.CODEX_TEXT.values())
+    for text in texts:
+        assert not any(word in text.lower() for word in jargon), text
