@@ -14,7 +14,7 @@ This creates:
 - `profile.md` — Structured facts extracted from the user's CV/resume.
 - `answers.md` — Reusable form answers, authorization wording, salary rule, EEO defaults, and saved custom Q&A.
 - `rules.json` — Deterministic lint/build/dedupe rules (author name, file prefix, confirmed/unconfirmed software, forbidden claims, employer order, employer aliases, style checks).
-- `portals.md` — Per-employer portal login notes (never commit to git).
+- `credentials.md` — Portal accounts the agent creates or reuses (username + password per employer).
 - `cover-letter-spec.json` — Starter spec for `scripts/coverletter/build.py`.
 - `docs/`, `evidence/`, `output/pdf/`, and an empty `applications.jsonl`.
 

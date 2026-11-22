@@ -33,7 +33,7 @@
    ```bash
    python job/scripts/render/render.py preflight --workspace workspace --format text
    ```
-5. **Point your AI agent at `job/SKILL.md`** and run your first job search or application. BrowserOS Neo MCP is strongly recommended for live sessions and reliable ATS automation.
+5. **Point your AI agent at `job/SKILL.md`** and run your first job search or application. The skill uses BrowserOS Neo for all browser work and OS computer use (Codex Computer Use by default) only for tasks outside the browser.
 
 ## Repository Map
 
@@ -58,7 +58,7 @@ Habashi-kit/
     │   ├── profile.md
     │   ├── answers.md
     │   ├── rules.json
-    │   ├── portals.md
+    │   ├── credentials.md
     │   └── cover-letter-spec.json
     ├── scripts/                    # Deterministic CLI & browser helpers
     │   ├── init_workspace.py

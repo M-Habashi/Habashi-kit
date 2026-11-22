@@ -26,7 +26,7 @@ def test_init_workspace_creates_expected_structure(tmp_path: Path) -> None:
         "profile.md",
         "answers.md",
         "rules.json",
-        "portals.md",
+        "credentials.md",
         "cover-letter-spec.json",
         "applications.jsonl",
     ):

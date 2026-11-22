@@ -44,13 +44,11 @@ Locate the user's private workspace (default: `workspace/` or a user-specified d
 ### 1B. Tools & Browser Readiness Check
 Verify available execution tools and report readiness upfront:
 
-1. **Primary Browser — BrowserOS Neo MCP (Strongly Recommended)**:
-   - Preferred for live logins, persistent session profile, fast `run` scripts, CDP file uploads, and `scripts/neo/` ATS helpers.
-   - If BrowserOS Neo is unavailable, you may fall back to Chrome, built-in browser tools, or Playwright, **but explicitly inform the user that BrowserOS Neo is strongly recommended** and explain why (persistent logins, faster batched ATS scripts, fewer CAPTCHA/login resets).
-2. **OS Computer Use (Optional Native Fallback)**:
-   - Check whether OS Computer Use is available (especially Codex models with `@oai/sky` + Codex desktop app running) for stubborn native OS file pickers, OAuth popups, or browser "Leave site?" dialogs.
-   - Enforce the **single-step return-to-browser boundary**: name the single blocked step, perform the minimum native action, and return immediately to browser automation. Never automate OS password/PIN prompts.
-   - If unavailable, tell the user upfront that stubborn native OS dialogs will pause for a quick human click.
+1. **Browser = BrowserOS Neo, always.** Do all web work in Neo: pages, forms, uploads, tabs, and saved passwords. Don't switch to another browser.
+   - If Neo can't be reached or a call errors, check and debug it (is BrowserOS running, does the MCP answer, retry).
+   - Not installed: stop and ask the user to install BrowserOS Neo.
+   - Installed but closed or broken: use OS computer use to open or fix it, then continue in Neo.
+2. **OS computer use = anything outside the browser.** Whenever a specific task needs OS-level control (opening or fixing BrowserOS, a native file dialog, another desktop app), do it with OS computer use. As soon as that task is done, close the OS computer-use session and continue in Neo.
 3. **Local Script Dependencies (Optional but Recommended)**:
    - Python `reportlab` + `pymupdf` (`fitz`) for `scripts/coverletter/build.py` (1-page PDF + QA PNG rendering).
    - Node.js (and `pnpm --dir job/scripts/neo install` for `jobs.mjs`) for `scripts/neo/emit.mjs` and `jobs.mjs`.
@@ -77,6 +75,8 @@ Read the full job description and knockout questions first. Check for hard block
 If a hard blocker exists, record `skipped` or `blocked` with reason and move on.
 
 ### 3. Complete Form Accurately & Q&A Memory Loop
+If the portal needs an account, look in `<workspace_dir>/credentials.md` and the browser's saved passwords first. If none exists, you are allowed to create a new account. Save its username and password in **both** `credentials.md` and the password manager of the browser you are using (BrowserOS Neo: `credentials` action `add`), so future runs and the user's own manual sign-ins can reuse it. See `references/browser-and-tools.md` §6.
+
 Fill every field strictly from `profile.md` and `answers.md`. Never fabricate licenses, dates, GPAs, employers, or skills, and never assume HR will fix a wrong checkbox.
 - **When an unanswered question appears**:
   - Single-job mode: ask the user concisely and wait for their answer.
@@ -123,7 +123,7 @@ Load only the reference file relevant to your current step:
 | When You Need To... | Read This Reference |
 | --- | --- |
 | Run first-time setup, extract CV into `profile.md`, or configure `answers.md` / `rules.json` | `references/onboarding.md` |
-| Configure/recover BrowserOS Neo, fall back to Chrome, use Codex Computer Use (`@oai/sky`), handle iframe uploads, or manage tabs | `references/browser-and-tools.md` |
+| Debug or fix BrowserOS Neo, use OS computer use, create or reuse portal accounts, handle iframe uploads, or manage tabs | `references/browser-and-tools.md` |
 | Automate Workday, iCIMS, Paylocity, AAIM, Yello, Paycor, cookie banners, or run `scripts/neo/emit.mjs` & `jobs.mjs` | `references/ats-playbooks.md` |
 | Render a checklist, blocker notice, gate check, review, batch summary, or ledger (HTML or plain-text fallback) | `references/rendering.md` |
 | Apply truthfulness rules, wording exceptions, learnable-software framing, CV order, cover-letter structure, or email-route applications | `references/form-and-truthfulness.md` |

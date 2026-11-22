@@ -27,7 +27,7 @@ Always dismiss cookie banners early so they do not intercept clicks or cover sub
 
 ### Workday (`*.myworkdayjobs.com`)
 - Discover open postings rapidly with `jobs.mjs workday` before opening browser tabs.
-- Reuse saved per-employer Workday credentials from `portals.md` (each company has an isolated tenant login).
+- Reuse saved per-employer Workday credentials from `credentials.md` (each company has an isolated tenant login); create and save a new one when none exists (`browser-and-tools.md` §6).
 - Autofill-from-resume often scrambles employment order or dates — always inspect every parsed Work Experience and Education block and fix discrepancies against `profile.md`.
 - Wait for dynamic dropdown menus and multi-step "Save and Continue" validation banners to settle before clicking Next.
 

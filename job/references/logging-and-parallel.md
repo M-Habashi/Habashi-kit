@@ -9,7 +9,7 @@ Keep all user runtime data inside `<workspace_dir>/` (never committed to git):
 ├── profile.md                 # Extracted CV facts (read during runs)
 ├── answers.md                 # Reusable form Q&A (edit only with user approval)
 ├── rules.json                 # Lint, build, and alias rules
-├── portals.md                 # Per-employer ATS portal notes
+├── credentials.md            # Portal accounts: usernames + passwords
 ├── applications.jsonl         # Append-only source-of-truth ledger
 ├── log.md                     # Auto-rendered summary from applications.jsonl
 ├── docs/                      # Resume PDF + optional transcripts/licenses/samples
