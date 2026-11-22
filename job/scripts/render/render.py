@@ -5,6 +5,7 @@ Subcommands:
   card <payload.json | ->   Render any report payload (checklist, kv, table, list, note blocks).
   preflight --workspace W   Inspect a workspace + tools and render the Step 1 preflight checklist.
   tools                     Check BrowserOS Neo, Codex computer use, and local scripts only.
+  next --workspace W        Show the single next step ("start" / "what's next"); --json adds `action`.
   ledger --workspace W      Render the application ledger (latest state per role).
 
 Exit codes: 0 = rendered and ready, 2 = preflight/tools found a blocker (missing required
@@ -330,17 +331,7 @@ def preflight_payload(workspace: Path, tools: list[str] | None = None, system: b
                       live: bool = False, neo_url: str = toolcheck.NEO_URL_DEFAULT,
                       neo_agent: str | None = None, claude_cu: str | None = None,
                       fix: bool = False) -> dict[str, Any]:
-    docs = workspace / "docs"
-    pdfs = sorted(p.name for p in docs.glob("*.pdf")) if docs.is_dir() else []
-    documents = [
-        {"label": "Your resume", "status": "ok" if pdfs else "missing",
-         "detail": "" if pdfs else "Please share your resume as a PDF file."},
-        check_md(workspace / "profile.md", PROFILE_REQUIRED, "Your profile", "Contact header"),
-        check_md(workspace / "answers.md", ANSWERS_REQUIRED, "Your standard answers", "Authorization, availability, salary and targets"),
-        check_rules(workspace / "rules.json"),
-        {"label": "Extras (if you have them)", "status": "optional",
-         "detail": "Certificates or licenses, transcripts, references, portfolio"},
-    ]
+    documents = document_items(workspace)
     blocks: list[dict[str, Any]] = [
         tools_block(tools, system, live, neo_url, neo_agent, claude_cu, fix),
         {"type": "checklist", "heading": "Your documents", "items": documents},
@@ -353,6 +344,72 @@ def preflight_payload(workspace: Path, tools: list[str] | None = None, system: b
     elif agent_note(blocks[0]):
         blocks.append(agent_note(blocks[0]))
     return {"title": "Setup check", "blocks": blocks}
+
+
+def document_items(workspace: Path) -> list[dict[str, str]]:
+    docs = workspace / "docs"
+    pdfs = sorted(p.name for p in docs.glob("*.pdf")) if docs.is_dir() else []
+    return [
+        {"label": "Your resume", "status": "ok" if pdfs else "missing",
+         "detail": "" if pdfs else "Please share your resume as a PDF file."},
+        check_md(workspace / "profile.md", PROFILE_REQUIRED, "Your profile", "Contact header"),
+        check_md(workspace / "answers.md", ANSWERS_REQUIRED, "Your standard answers", "Authorization, availability, salary and targets"),
+        check_rules(workspace / "rules.json"),
+        {"label": "Extras (if you have them)", "status": "optional",
+         "detail": "Certificates or licenses, transcripts, references, portfolio"},
+    ]
+
+
+# --------------------------------------------------------------------------- what's next
+
+OPEN_STATUSES = ("reserved", "submission_attempted", "outcome_unknown")
+
+
+def plural(n: int, word: str = "application") -> str:
+    return f"{n} {word}" + ("" if n == 1 else "s")
+
+
+def next_payload(workspace: Path, system: bool = True, neo_url: str = toolcheck.NEO_URL_DEFAULT,
+                 neo_agent: str | None = None) -> dict[str, Any]:
+    """Pick the single next step from the current state. `action` tells the agent what to do;
+    the card tells the user in plain words."""
+    def step(action: str, text: str, rows: list[list[str]] | None = None) -> dict[str, Any]:
+        blocks: list[dict[str, Any]] = [{"type": "kv", "rows": rows}] if rows else []
+        blocks.append({"type": "note", "tone": "info", "text": text})
+        return {"title": "What's next", "action": action, "blocks": blocks}
+
+    apps = tools_block(None, system, False, neo_url, neo_agent)
+    browser = next(i for i in apps["items"] if i["label"] == toolcheck.BROWSER)
+    if browser["status"] in ("missing", "blocked"):
+        return step("fix_browser", browser["detail"])
+
+    docs = {i["label"]: i for i in document_items(workspace)}
+    if docs["Your resume"]["status"] == "missing":
+        return step("share_resume", "Please share your resume as a PDF file. I'll take it from there.")
+    if "missing" in (docs["Your profile"]["status"], docs["Cover-letter settings"]["status"]):
+        return step("fill_from_resume", "I'll read your resume and fill in your profile. Then I'll ask you a few short questions.")
+    if docs["Your standard answers"]["status"] == "missing":
+        return step("ask_answers", "I have a few short questions: the jobs you want, where you want to work, "
+                                   "your work authorization, start date, and salary preference.")
+
+    lg = load_ledger_module()
+    ledger_path, rules_path = lg.resolve_paths(workspace, None)
+    latest = lg.collapse_latest(lg.read_records(ledger_path), lg.load_alias_map(rules_path))
+    status = lambda e: str(e.get("status", "")).lower()
+    verified = sum(status(e) == "verified" for e in latest)
+    waiting = [e for e in latest if status(e) == "blocked"]
+    open_apps = [e for e in latest if status(e) in OPEN_STATUSES]
+    rows = [["Applications sent", str(verified)], ["Waiting on you", str(len(waiting))]] if latest else None
+    names = lambda entries: ", ".join(str(e.get("employer", "")) for e in entries[:3]) + ("..." if len(entries) > 3 else "")
+    if waiting:
+        return step("answer_waiting", f"{plural(len(waiting))} {'needs' if len(waiting) == 1 else 'need'} an answer from you ({names(waiting)}). "
+                                      "I'll ask the questions one at a time.", rows)
+    if open_apps:
+        return step("finish_open", f"I'll finish or confirm {plural(len(open_apps), 'open application')}: {names(open_apps)}.", rows)
+    answers = (workspace / "answers.md").read_text(encoding="utf-8") if (workspace / "answers.md").is_file() else ""
+    roles = (field_value(answers, "Target Roles") or "").strip("` ")
+    roles = roles if roles and not PLACEHOLDER.search(roles) else "matching"
+    return step("find_jobs", f"I'll look for new {roles} jobs and show you a short list to approve.", rows)
 
 
 NEO_BLOCKED = "The browser must work before I can apply for you. See the browser line above."
@@ -523,6 +580,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_pre = sub.add_parser("preflight", parents=[common, checks], help="Inspect a workspace + tools and render the preflight checklist.")
     p_pre.add_argument("--workspace", type=Path, default=Path("workspace"))
 
+    p_next = sub.add_parser("next", parents=[common], help="Show the single next step (fast; no fixes, no live test).")
+    p_next.add_argument("--workspace", type=Path, default=Path("workspace"))
+    p_next.add_argument("--neo-agent", default=None, metavar="ok|error:<message>")
+    p_next.add_argument("--neo-url", default=toolcheck.NEO_URL_DEFAULT)
+    p_next.add_argument("--offline", action="store_true", help="Skip process and network checks.")
+
     p_led = sub.add_parser("ledger", parents=[common], help="Render the application ledger.")
     p_led.add_argument("--workspace", type=Path, default=Path("workspace"))
     p_led.add_argument("--rules", type=Path, default=None)
@@ -538,6 +601,8 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "preflight":
             payload = preflight_payload(args.workspace, args.tool, not args.offline, args.live, args.neo_url,
                                         args.neo_agent, args.claude_computer_use, args.fix)
+        elif args.command == "next":
+            payload = next_payload(args.workspace, not args.offline, args.neo_url, args.neo_agent)
         elif args.command == "tools":
             payload = tools_payload(args.tool, not args.offline, args.live, args.neo_url,
                                     args.neo_agent, args.claude_computer_use, args.fix)

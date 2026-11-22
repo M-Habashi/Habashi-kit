@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -135,3 +136,25 @@ def test_preflight_blocks_on_unusable_neo(tmp_path: Path) -> None:
     res = run(RENDER, "preflight", "--workspace", str(ws), "--offline", "--format", "text",
               "--neo-agent", "error:refused")
     assert res.returncode == 2 and "browser must work" in res.stdout
+
+
+def next_action(ws: Path, *extra: str) -> str:
+    res = run(RENDER, "next", "--workspace", str(ws), "--offline", "--json", *extra)
+    assert res.returncode == 0, res.stderr
+    return json.loads(res.stdout)["action"]
+
+
+def test_next_walks_the_user_through_setup_and_applications(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    run(INIT, str(ws))
+    assert next_action(ws, "--neo-agent", "error:refused") == "fix_browser"
+    assert next_action(ws) == "share_resume"
+    (ws / "docs" / "Sample_Resume.pdf").write_bytes(b"%PDF-1.4 sample")
+    assert next_action(ws) == "fill_from_resume"
+    fill_workspace(ws)
+    assert next_action(ws) == "find_jobs"
+    run(LEDGER, "record", "--employer", "Northstar", "--role", "Analyst", "--status", "blocked",
+        "--notes", "Question: rotating shifts?", "--workspace", str(ws))
+    assert next_action(ws) == "answer_waiting"
+    text = run(RENDER, "next", "--workspace", str(ws), "--offline", "--format", "text").stdout
+    assert "Northstar" in text and re.search(r"Waiting on you\s+1", text) and "1 application needs" in text

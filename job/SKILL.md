@@ -1,6 +1,6 @@
 ---
 name: habashi-kit-job
-description: Reusable, domain-agnostic job-search and job-application skill with startup preflight checks, browser/tool readiness detection, Q&A memory updates, duplicate-safe JSONL logging, 1-page tailored cover-letter generation, and ATS playbooks.
+description: Reusable, domain-agnostic job-search and job-application skill for non-technical job seekers. Use when the user says "start", "what's next", "next", "continue", or asks to find or apply for jobs. Startup app/document checks, Q&A memory, duplicate-safe logging, 1-page tailored cover letters, and ATS playbooks.
 ---
 
 # Habashi-kit/job
@@ -14,6 +14,18 @@ Users are job seekers, not programmers. In everything you say to them:
 - Do every technical step yourself: run scripts, edit `profile.md`/`answers.md`/`rules.json`, set up tools, open apps. Never ask the user to run a command or edit a file.
 - Ask the user only for what only they can do: share documents, answer questions about themselves, install an app, sign in, open or reopen an app. Give one short step at a time.
 - Fill as much as you can from their resume first, then ask only for what's still missing.
+
+## Simple Commands
+
+The user only needs to say a few words. Workspace: `workspace/` unless the user named another folder.
+
+| User says | You do |
+| --- | --- |
+| **"start"** | Create the workspace if missing (`init_workspace.py`), run the Step 1 startup gate, then continue as for "what's next". |
+| **"what's next"**, **"next"**, **"continue"** | `python job/scripts/render/render.py next --workspace <workspace_dir> --neo-agent <ok\|error:msg> --json` → show its card, then do its `action` right away: `fix_browser` (Step 1A), `share_resume` (ask for the PDF), `fill_from_resume` (fill profile/settings yourself, `references/onboarding.md`), `ask_answers` (plain questions → `answers.md`), `answer_waiting` / `finish_open` (resume those applications), `find_jobs` (search, show a short list to approve, then Step 2 for each approved job). |
+| **"status"**, **"my applications"** | `render.py ledger --workspace <workspace_dir>` card. |
+
+End every finished step with one plain line saying what comes next, so the user can simply reply "next".
 
 ## Output Rendering (Default for Every Report)
 
