@@ -1,88 +1,68 @@
-# Writing Style, Citations, Fresh Eyes & HTML Track Changes
+# Writing Style, Transition Rules, Citations, Fresh Eyes & HTML Diff
 
-Domain-agnostic prose, evidence, citation, and presentation rules for `Habashi-kit/writing`. Load this reference whenever drafting, revising, auditing citations, running Fresh Eyes, or rendering tracked-changes drafts.
-
----
-
-## 1. Planning & Paragraph Craft
-
-1. **Plan what the reader must understand.** Read the preceding passage, heading, following passage, equations, and figures. Identify the one specific question the paragraph must answer and outline the factual propositions in the order the reader needs them. Vague labels ("motivation", "method", "details") are insufficient—state what each step actually explains.
-2. **Open with the next necessary step.** Enter from the preceding text and advance directly to the method, assumption, comparison, or result the argument needs next. Reconnect with the established technical name when referring to the whole framework or component. Avoid reopening an established topic with generic goals.
-3. **Check every sentence's contribution and placement before polishing length.** Confirm what each sentence adds, what prior information makes it intelligible, and how it advances the paragraph's question. Establish the main operation or comparison before adding examples or settings. Never invent a reason or procedural detail just to connect two sentences.
-4. **Given before new (Gopen & Swan).** Open each sentence with established information from the previous sentence and place the new contribution at the end. Keep the main subject and meaningful verb early (first-seven-words diagnostic), unpack strings of three or more stacked nouns, and aim for ~15–20 words per sentence (≤ 25 words ceiling in pipeline mode) without padding or over-compressing distinct ideas into one packed sentence.
-5. **Impersonal technical voice.** Use impersonal engineering/academic prose (avoid first-person "we"/"our" and instructional imperatives like "Let $x$ be" or "Define" unless the target venue requires otherwise). Keep physical or computational components active when they perform the action. Preserve grammatical `"where"` continuations defining symbols after equations instead of changing them mechanically to `"Here"`.
-6. **Clean punctuation and word discipline.**
-   - Avoid colons (`:`) in prose sentences (split into connected sentences or use a comma/conjunction).
-   - Avoid semicolons (`;`), `"whose"`, `"ideally"`, and suspended hyphens (write complete terms such as *"autospectra and cross spectra"*).
-   - Avoid vague praise (`"accurate"`, `"effective"`, `"useful"`, `"efficient"`) when a specific mechanism, comparison, or metric is needed.
-   - Use concise, consistent scientific names (give the full term once, then reuse one clear short name rather than inventing synonyms for variety or dropping to vague `"the method"`).
-   - Preserve wording that already works clearly; do not rephrase merely for variety.
-7. **Positive tone for this work, measured tone for prior work.**
-   - Leave out limiting words like `"only"` about the study's own method unless technically required.
-   - When explaining a gap in prior work, state factually what earlier studies did and what remains unaddressed—never use an aggressive tone.
-   - Use neutral technical verbs (`"degrades"`, `"compromises"`, `"limits"`) rather than dramatic ones (`"sacrifices"`, `"destroys"`, `"abandons"`, `"kills"`).
-8. **Protect equations and symbol definitions.** When simplifying prose, keep display equations in their existing format (do not merge or reformat them) and never drop symbol definitions. State at a high level what an equation combines or compares before showing it, and explain the purpose of a choice at the moment it appears.
+Single source of truth for prose craft, sentence/paragraph transitions, claim precision, citations, Fresh Eyes cold reads, and HTML track-changes formatting in `Habashi-kit/writing`.
 
 ---
 
-## 2. Precision of Claims, Experiments & Figures
+## 1. Planning, Transitions & Paragraph Craft
 
-### Claim precision
-- **Hedge only what is untested or conditional.** Measured or proven results stay definite (`"the margin fell to 0.34"`). Untested cases or conditional generalizations take `"can"` or `"may"` (`"a stiffer specimen can tolerate a higher gain"`).
-- **Distinguish uncertain from unknown.** Something partly known, identified, or estimated is *"uncertain"* (state its degree if needed); reserve *"unknown"* for complete absence of information.
-- **Name the observation behind a decision.** Replace vague *"available data"* or *"available signals"* with the actual measured quantity.
-- **Avoid repeating modal frames** across neighboring sentences (`"must ... must ..."`).
-- **Frame future work openly.** Write *"Future work can …"* rather than *"Future work will …"* so future directions stay open without implying a commitment by the authors.
+A paragraph is an argument, not a list of facts. Every sentence takes what the reader already holds and advances the paragraph's question.
 
-### Reporting experiments and results
-- Open each results subsection with what is applied and expected before giving outcomes.
-- Report what supports the paper's argument; omit internal code/file names, routine test justifications, and minor settings that add no explanatory value.
-- Round dimensions and reported quantities to the precision the argument needs, and state units consistently.
-- Give section introductions a brief substantive overview of each major part/test and its purpose rather than a bare list of subsection numbers.
-- Never refer to internal appendices in the manuscript body unless the target venue explicitly uses appendices as part of the main argument.
+### Structure & transitions (applies to every draft and checked strictly in pipeline mode)
+1. **Reader question & proposition chain.** Read the heading, preceding/following paragraphs, equations, and figures. Identify the one question the paragraph answers and outline the factual propositions in the order the reader needs them (state what each step explains—never vague labels like "motivation" or "details"). Name the logical relation between every consecutive proposition: *because*, *therefore*, *so (that)*, *but / however*, *which means*, *for example*, *then* (sequence), or *to do this* (purpose). *"Also"*, *"in addition"*, *"another"*, and parallel lists (*"X shows A. Y shows B."*) are not relations—reorder, merge, or drop unrelated points.
+2. **Given before new & strict antecedents.** Open each sentence with established information from the previous sentence and end with the new contribution (Gopen & Swan). Words such as *"this"*, *"these"*, *"the same"*, and *"the first"* require an explicit prior antecedent—repeating a noun alone is not a link.
+3. **Entry & exit handoffs.** Open from the preceding text (unless starting an independent section such as Conclusions) and close by stating why the reader needs what immediately follows. Never jump ahead to a later section or close by restating a shared setting. When opening a section followed by a setup subsection, close with a brief ordered roadmap grounded in the paragraph's last point rather than an invented causal *"so"*.
+4. **One relation per sentence & length.** Keep main subject and meaningful verb early (first-seven-words diagnostic), unpack strings of 3+ stacked nouns, and target ~15–20 words (**≤ 25 words ceiling** in pipeline mode). Split sentences carrying two relations at the second relation; never pad or over-compress unrelated ideas into packed sentences.
+5. **Swap & bare-`"and"` test.** If two adjacent sentences can trade places without loss of logic, merge them with an explicit relation or rewrite one to depend on the other. Apply the same test to clauses joined by a bare *"and"*.
+6. **True causes only.** For every *"so"*, *"therefore"*, *"because"*, and *"thus"*, verify the stated cause is the real physical or logical cause. A design choice relates to an expected effect by purpose (*"to test"*, *"to counter"*), not as its cause.
+7. **Promise only what follows.** Any claim about a later test or section must match what that section actually delivers. State expected outcomes as expected, never as findings.
 
-### Figures
-- Describe every figure in the text **before** it appears, never after. Never open a section or subsection with a figure.
-- Introduce the subject first, then point to the figure (*"The reference structure is shown in Figure X"*, not *"Figure X shows the test"*).
-- State what a figure **plots** (which line/style represents which signal, what each subplot shows, what is observed, and why cases differ). Use *"subplot"* rather than *"panel"*.
-- Keep legends boxed inside each subplot (one entry per line, naming only that subplot's lines). Keep full colors while pairing distinct line styles so curves remain distinguishable in grayscale.
+### Voice, wording & equations
+- **Impersonal academic voice:** Avoid first-person *"we/our"* and instructional imperatives (*"Let x be"*, *"Define"*) unless the target venue requires otherwise. Keep physical/computational components active when they perform the action. Preserve grammatical *"where"* continuations after equations instead of changing them mechanically to *"Here"*.
+- **Punctuation & word bans:** No colons (`:`) in prose sentences, no semicolons (`;`), no `"whose"`, no `"ideally"`, no suspended hyphens (write full terms like *"autospectra and cross spectra"*), and no vague praise (*"accurate"*, *"effective"*, *"useful"*) in place of a mechanism or metric.
+- **Tone & register:** Positive tone for this work (omit limiting `"only"` on own method unless technically required); measured, factual tone for gaps in prior work; neutral technical verbs (*"degrades"*, *"compromises"*) instead of dramatic ones (*"sacrifices"*, *"destroys"*, *"abandons"*, *"kills"*).
+- **Consistent scientific names & minimal churn:** Define the full term once, then reuse one clear short name (never invent synonyms for variety or drop to vague *"the method"*). Preserve clear, approved wording rather than rephrasing for variety.
+- **Protect equations & definitions:** When simplifying prose, keep display equations intact (do not merge/reformat) and never drop symbol definitions. State at a high level what an equation combines or compares before showing it, and explain the purpose of a choice where it appears.
 
-### Interpreting author comments and edits
-- Treat comment highlights as approximate pointers; judge the affected wording from the author's intent across the **full paragraph**, and write connected prose rather than pasting chat notes literally.
-- When porting direct author edits, proofread grammar and spelling while keeping their words and meaning.
+---
+
+## 2. Precision of Claims, Experiments, Figures & Comments
+
+- **Hedge precisely:** Keep measured or verified results definite; hedge only untested or conditional claims (*"can"*, *"may"*). Distinguish *"uncertain"* (partially known/estimated) from *"unknown"* (no information). Name the actual observed signal behind a decision rather than vague *"available data"*. Avoid repeating the same modal frame across neighboring sentences. Frame future directions openly (*"Future work can …"*, not *"Future work will …"*).
+- **Experiments & results:** Open each results subsection with what is applied and expected before reporting outcomes. Give section introductions a brief substantive overview of each major part/test and its purpose. Omit internal file/code names, unjustified minor settings, and appendix references in the main body unless the venue requires them. Keep units consistent and precision appropriate to the argument.
+- **Figures:** Describe every figure in text **before** it appears; never start a section or subsection with a figure. Introduce the subject first, then cite the figure, and state what it **plots** (signals, line styles, subplots, observations, reasons for differences). Use *"subplot"* rather than *"panel"*, boxed per-subplot legends (one line per entry), and full colors paired with distinct line styles for grayscale legibility.
+- **Author comments & edits:** Treat highlight bounds as approximate—apply the author's intent across the full paragraph in connected prose (never paste chat notes literally). Proofread direct author edits for grammar and spelling while keeping their words and meaning.
 
 ---
 
 ## 3. Original-Source Citations & Evidence Ledger
 
-1. **Read the actual original source before citing.** Open the paper, PDF, or book chapter. Check its overview (abstract, introduction, conclusion) and verify technical claims in the method/results body. Trace general claims to the **oldest original source** that established them rather than a recent review. Never certify a mechanism, assumption, result, or limitation from a search snippet, abstract, or third-party summary. If a source cannot be accessed, flag it as unverified and withhold or narrow the claim.
-2. **Default citation format.** Number citations by first appearance (`Author [n]` when part of the sentence, `[n]` otherwise; `"et al."` for three or more authors), unless the target journal specifies another style.
-3. **Credit authors by name with verified attribution verbs.** Place the reference number beside the author's name with a verb matching verified content (`"introduced by"`, `"proposed by"`, `"presented by"`, `"derived by"`, `"discussed in"`, `"recommended by"`, `"found that"`, `"showed that"`). Avoid possessive forms like *"the estimator of Author [n]"*. Do not guess an attribution verb or claim someone was "first" without verification.
-4. **Connect the cited contribution to the local analysis.** State (a) what the source established or supplied and (b) how this work uses it—either **our work first** (*"Each window is weighted by the Hann window presented by Author [n]"*) or **their work first** (*"Author [n] showed that [verified finding]; therefore, [method] is used here to [purpose]"*). Map unfamiliar source terminology to the manuscript's own terms so a reader understands the step without opening the reference.
-5. **Order by lineage, avoid redundant citations.** Link related prior works by what each built on rather than artificial contrasts. After a named citation in a paragraph, refer back with *"They"* instead of repeating `"Author et al. [n]"` in neighboring sentences.
-6. **Conclusions without citations (default).** Keep the Conclusions section free of citations (refer to prior findings in plain terms, e.g., *"Previous numerical studies showed …"*) unless your reference papers regularly cite in Conclusions.
-7. **Maintain a per-paper `sources.md` ledger.** For each verified source record: author, title, year, DOI/URL, version/PDF read, sections actually read, a short exact quote with page/section, the supported claim, its local role, and any scope limitations.
+1. **Read the actual original source before citing.** Inspect the paper, PDF, or book chapter (overview plus relevant method/results body). Trace general claims to the **oldest original source**, not recent reviews. Never verify a mechanism, assumption, result, or limitation from a search snippet, abstract, or third-party summary. If unavailable, flag as unverified and withhold or narrow the claim.
+2. **Format & attribution.** Default to numbered-by-first-appearance (`Author [n]` in text, `[n]` parenthetically, `"et al."` for 3+ authors) unless the target journal specifies otherwise. Credit authors by name with a verified verb matching the source (*"introduced by"*, *"proposed by"*, *"presented by"*, *"derived by"*, *"showed that"*, *"found that"*)—never possessive (*"the method of Author [n]"*) and never guess a verb or claim priority without verification.
+3. **Connect to local use.** State both what the source established and how this paper uses it (either *our work first* or *their work first*), mapping unfamiliar source jargon into the manuscript's own terms so a reader needs no external paper to follow the step. Order related citations by lineage rather than artificial contrasts, and use *"They"* after a named citation in the same paragraph instead of repeating `"Author et al. [n]"`.
+4. **Source ledger (`sources.md`).** Maintain a local per-paper ledger recording author, title, year, DOI/URL, version read, sections actually read, short exact quote with page/section, supported claim, local role, and scope limits.
 
 ---
 
 ## 4. Fresh Eyes (Cold Read)
 
-When the author asks for **"Fresh Eyes"** on a passage, test whether a technical reader with zero prior context can follow it:
+When the author asks for **"Fresh Eyes"** on a passage:
 
-1. Spawn a fresh subagent that reads **no files** and runs **no searches**. Supply only the target passage and any equations it introduces, framed as part of a technical paper in that field.
-2. Ask it to list numbered questions it needs answered, grouped under: (a) what the passage does at a high level, (b) what it combines or compares with what, (c) why each reference value or choice is made, (d) what problem it solves and what fails without it, (e) how the mechanism achieves it, and (f) vague words. It proposes **no rewrite**.
-3. Drop questions already answered by earlier manuscript text; present the remaining questions to the author with plain answers and a tracked-changes draft that resolves them.
-4. After the author agrees on the draft, offer a second Fresh Eyes pass to confirm the questions are resolved.
+1. Spawn a fresh subagent (user-chosen model/effort) with **no file access and no searches**, supplying only the passage and its equations as part of a technical paper.
+2. Ask for numbered questions it needs answered, grouped under: (a) high-level purpose, (b) what is combined or compared, (c) why each reference value/choice exists, (d) what problem it solves and what fails without it, (e) how the mechanism works, and (f) vague words. **No rewrite.**
+3. Drop questions already answered earlier in the manuscript; present the rest with plain answers and a tracked-changes draft.
+4. Offer a second Fresh Eyes pass on the agreed draft to verify the questions are gone.
 
 ---
 
-## 5. Presenting Drafts: HTML Track Changes
+## 5. HTML Track-Changes Presentation
 
-Never present prose revisions as sentence fragments, Markdown Before/After blocks, bold-only diffs, or comment-mapping tables. Show **every changed paragraph in full** with `<del>` / `<ins>` markup, flanked by unchanged greyed `<p class="context">` neighbors, using the self-contained HTML skeleton below (preview with `html_preview`, then publish with `html_render` if available):
-
-- **Never set a fixed `background` or fixed dark `color` on `html`/`body`** so light and dark themes both stay legible.
-- **Avoid stacked delete+insert on the same unchanged word** (e.g., `the <del>test </del>implementation<ins> procedure</ins>`, not `<del>test implementation</del><ins>implementation procedure</ins>`).
-- **One marked-up copy per paragraph:** the `.clean` toggle hides only `<del>` elements; `<ins>` stays blue so new text remains easy to scan.
+Show every changed paragraph **in full** inside a self-contained HTML page (preview with `html_preview`, publish with `html_render` when available; inline fallback otherwise):
+- Inherit host theme colors (never hardcode `background` or fixed dark `color` on `html`/`body`).
+- Serif `.paper` typography; deletions in red `#901500` strikethrough (`<del>`); insertions in blue `#007CA8` underline (`<ins>`).
+- Double-click toggles `.clean`, hiding only `<del>` while keeping `<ins>` blue.
+- Flank each changed paragraph with its unchanged preceding and following paragraphs as greyed `<p class="context">`.
+- Avoid stacked delete+insert on the same unchanged word (e.g., `the <del>test </del>implementation<ins> procedure</ins>`).
 
 ```html
 <!doctype html>
