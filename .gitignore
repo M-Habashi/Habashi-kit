@@ -4,3 +4,5 @@ __pycache__/
 .tmp/
 *.pyc
 workspace/
+writing/reference_papers/*
+!writing/reference_papers/.gitkeep
