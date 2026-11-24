@@ -7,7 +7,7 @@
 | Skill | Path | Description |
 | --- | --- | --- |
 | **Habashi-kit/job** (`habashi-kit-job`) | `job/` | End-to-end job-search and job-application skill with startup preflight checks, browser/tool readiness detection, Q&A memory updates, duplicate-safe JSONL logging, tailored 1-page PDF cover-letter generation, and ATS playbooks. |
-| **Habashi-kit/writing** (`habashi-kit-writing`) | `writing/` | Domain-agnostic academic and technical manuscript writing skill with a benchmark-paper startup gate (`>=3` reference papers converted from PDF to Markdown), connected-paragraph drafting/checking pipeline, dual-model Benchmark Council (Opus + newest Sol), original-source citation rules, Fresh Eyes cold reads, and HTML track-changes draft review. |
+| **Habashi-kit/writing** (`habashi-kit-writing`) | `writing/` | Domain-agnostic academic and technical manuscript writing skill with a reference-paper startup gate (`>=3` reference papers converted from PDF to Markdown), connected-paragraph drafting/checking pipeline, dual-reviewer Reference-Paper Council (model and effort chosen by the user), original-source citation rules, Fresh Eyes cold reads, and HTML track-changes draft review. |
 
 ## Quickstart (`Habashi-kit/job`)
 
@@ -39,9 +39,9 @@
 
 ## Quickstart (`Habashi-kit/writing`)
 
-1. **Add at least 3 benchmark papers** from your target journal or subfield into `writing/reference_papers/` (gitignored so PDFs and extracted `.md` files stay local), or point the agent to your paper workspace's `reference_papers/` folder.
+1. **Add at least 3 reference papers** from your target journal or subfield into `writing/reference_papers/` (gitignored so PDFs and extracted `.md` files stay local), or point the agent to your paper workspace's `reference_papers/` folder.
 2. **Point your AI agent at `writing/SKILL.md`**. On startup, the skill verifies that at least 3 reference papers exist and prompts you to convert their PDFs into clean reading-order `.md` files.
-3. **Draft, revise, or audit** any section—use `"pipeline"` for the Manager → Opus Drafter → independent Opus Checker workflow, `"council"` for dual-model grading (Opus + newest Sol) against your benchmark papers, or `"Fresh Eyes"` for a zero-context cold read.
+3. **Draft, revise, or audit** any section—use `"pipeline"` for the Manager → Drafter → independent Checker workflow, `"council"` for dual-reviewer grading against your reference papers, or `"Fresh Eyes"` for a zero-context cold read. Whenever a workflow delegates to subagents, the skill prompts you for your preferred model(s) and reasoning effort.
 
 ## Repository Map
 
@@ -88,7 +88,7 @@ Habashi-kit/
     ├── references/                 # On-demand style, citation, pipeline & council guides
     │   ├── style-and-citations.md
     │   └── pipeline-and-council.md
-    └── reference_papers/           # Local folder for >=3 benchmark paper PDFs/MDs (gitignored)
+    └── reference_papers/           # Local folder for >=3 reference-paper PDFs/MDs (gitignored)
         └── .gitkeep
 ```
 
