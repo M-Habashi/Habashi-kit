@@ -28,6 +28,9 @@
 ## 4. Preferences, Availability & Salary Rule
 - **Target Roles**: `<Role titles / tracks>`
 - **Target Locations / Work Mode**: `<Cities, regions, Onsite / Hybrid / Remote>`
+- **Companies to Prefer**: `<Employers to look at first, or None>`
+- **Companies to Avoid**: `<Employers to skip, or None>`
+- **Search Plan Confirmed On**: `<Date the user approved the roles, places and companies to search>`
 - **Earliest Available Start Date**: `<Exact date or notice period>`
 - **Salary Expectation Rule**: `<e.g., Enter "Open / Negotiable" if text field; enter market range $X-$Y if numeric required; leave blank if optional>`
 

@@ -152,6 +152,13 @@ def test_next_walks_the_user_through_setup_and_applications(tmp_path: Path) -> N
     (ws / "docs" / "Sample_Resume.pdf").write_bytes(b"%PDF-1.4 sample")
     assert next_action(ws) == "fill_from_resume"
     fill_workspace(ws)
+    assert next_action(ws) == "confirm_search"
+    plan = json.loads(run(RENDER, "next", "--workspace", str(ws), "--offline", "--json").stdout)
+    assert ["Target Roles", "Filled"] in plan["blocks"][0]["rows"]
+    assert ["Companies to Avoid", "Not set yet"] in plan["blocks"][0]["rows"]
+    answers = (ws / "answers.md").read_text(encoding="utf-8").replace(
+        "`<Date the user approved the roles, places and companies to search>`", "`2026-11-23`")
+    (ws / "answers.md").write_text(answers, encoding="utf-8")
     assert next_action(ws) == "find_jobs"
     run(LEDGER, "record", "--employer", "Northstar", "--role", "Analyst", "--status", "blocked",
         "--notes", "Question: rotating shifts?", "--workspace", str(ws))

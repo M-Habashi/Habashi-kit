@@ -21,7 +21,7 @@
    ```
 2. **Add your documents & profile**:
    - Place your resume/CV PDF (and optional transcripts, licenses, or portfolio PDFs) in `workspace/docs/`.
-   - Fill out `workspace/profile.md`, `workspace/answers.md`, and `workspace/rules.json`.
+   - Fill out `workspace/profile.md`, `workspace/answers.md`, and `workspace/rules.json`. `workspace/preferences.md` collects how you like the agent to work.
 3. **Optional local tooling dependencies**:
    - **Cover-letter PDF + PNG QA builder** (Python): `reportlab` and `pymupdf` (`fitz`).
    - **ATS board discovery & Neo script helpers** (Node.js):
@@ -60,6 +60,7 @@ Habashi-kit/
     │   ├── answers.md
     │   ├── rules.json
     │   ├── credentials.md
+    │   ├── preferences.md
     │   └── cover-letter-spec.json
     ├── scripts/                    # Deterministic CLI & browser helpers
     │   ├── init_workspace.py

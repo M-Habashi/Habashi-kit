@@ -22,10 +22,26 @@ The user only needs to say a few words. Workspace: `workspace/` unless the user 
 | User says | You do |
 | --- | --- |
 | **"start"** | Create the workspace if missing (`init_workspace.py`), run the Step 1 startup gate, then continue as for "what's next". |
-| **"what's next"**, **"next"**, **"continue"** | `python job/scripts/render/render.py next --workspace <workspace_dir> --neo-agent <ok\|error:msg> --json` → show its card, then do its `action` right away: `fix_browser` (Step 1A), `share_resume` (ask for the PDF), `fill_from_resume` (fill profile/settings yourself, `references/onboarding.md`), `ask_answers` (plain questions → `answers.md`), `answer_waiting` / `finish_open` (resume those applications), `find_jobs` (search, show a short list to approve, then Step 2 for each approved job). |
+| **"what's next"**, **"next"**, **"continue"** | `python job/scripts/render/render.py next --workspace <workspace_dir> --neo-agent <ok\|error:msg> --json` → show its card, then do its `action` right away: `fix_browser` (Step 1A), `share_resume` (ask for the PDF), `fill_from_resume` (fill profile/settings yourself, `references/onboarding.md`), `ask_answers` (plain questions → `answers.md`), `answer_waiting` / `finish_open` (resume those applications), `confirm_search` (show the plan card; on "looks good" write today's date into `Search Plan Confirmed On` in `answers.md`; on changes, update `answers.md` and show the plan again), `find_jobs` (search with that plan, show a short list to approve, then Step 2 for each approved job). |
 | **"status"**, **"my applications"** | `render.py ledger --workspace <workspace_dir>` card. |
+| **"change my search"** | Clear `Search Plan Confirmed On`, then do `confirm_search`. |
 
-End every finished step with one plain line saying what comes next, so the user can simply reply "next".
+**End every reply with a recommendation**: one plain line saying what you recommend doing next and why, e.g. *"Next I recommend checking your search plan, so I only apply where you want. Reply "next" to go ahead."* Do this after every message, not only finished steps. If there are two sensible paths, recommend one and name the other in a few words.
+
+## When the User Corrects You
+
+Whenever the user corrects a fact, an answer, a choice you made, or how you work: fix it now, then ask once, in plain words, *"Should I remember this for next time?"*, naming the place in plain words ("your profile", "your standard answers"). Save only after a yes. Skip the question when the user says the change is just for this one job, or the same fact is already saved. You pick the file:
+
+| The correction is about... | Save it in |
+| --- | --- |
+| Facts about them: contact details, education, jobs, dates, skills | `profile.md` ("your profile") |
+| How to answer a form question, targets, places, companies, salary, authorization | `answers.md` ("your standard answers") |
+| Cover-letter wording, tools they have or don't, claims never to make, employer names or order | `rules.json` ("your cover-letter settings") |
+| How you should work: tone, how much to ask, which jobs to skip, habits | `preferences.md` ("your preferences") |
+| A portal login | `credentials.md` + the browser's saved passwords (no need to ask) |
+| How a website or the kit works for everyone, with no personal details | The matching `references/` file ("my notes on that website") |
+
+If it fits two places, save it in the more specific one. If none fits, use `preferences.md`.
 
 ## Output Rendering (Default for Every Report)
 
@@ -66,8 +82,9 @@ Before opening job portals, drafting materials, or submitting anything:
 ### 1B. Documents & Profile
 The preflight card inspects the workspace (`workspace/` by default) for you:
 1. **Required**: Resume / CV PDF in `docs/`; `profile.md` (contact info, links, education with exact GPA/scales, work history in CV order, confirmed skills); `answers.md` (work authorization & sponsorship wording, start date, salary rule, target roles/locations); `rules.json` (author name, file prefix, software lists, forbidden claims, employer order, aliases).
-2. **Optional (ask if applicable)**: certifications or licenses, transcripts, references or a cover-letter template, portfolio/GitHub/work samples.
-3. If required items are missing, ask for the resume first, fill everything you can from it yourself, then ask plain questions for the rest. Extract CV facts once into `profile.md` (see `references/onboarding.md`). During normal runs, read `profile.md` instead of re-parsing the PDF; reopen the PDF only for uploads or profile updates.
+2. **Preferences**: `preferences.md` holds how the user likes you to work. Read it at the start of every session and follow it.
+3. **Optional (ask if applicable)**: certifications or licenses, transcripts, references or a cover-letter template, portfolio/GitHub/work samples.
+4. If required items are missing, ask for the resume first, fill everything you can from it yourself, then ask plain questions for the rest. Extract CV facts once into `profile.md` (see `references/onboarding.md`). During normal runs, read `profile.md` instead of re-parsing the PDF; reopen the PDF only for uploads or profile updates.
 
 ## Step 2: Core Workflow (Single Job or Batch)
 
@@ -138,7 +155,7 @@ Load only the reference file relevant to your current step:
 
 | When You Need To... | Read This Reference |
 | --- | --- |
-| Run first-time setup, extract CV into `profile.md`, or configure `answers.md` / `rules.json` | `references/onboarding.md` |
+| Run first-time setup, extract CV into `profile.md`, configure `answers.md` / `rules.json`, or confirm the search plan | `references/onboarding.md` |
 | Debug or fix BrowserOS Neo, use OS computer use, hand tasks to the newest Sol model, create or reuse portal accounts, handle iframe uploads, or manage tabs | `references/browser-and-tools.md` |
 | Automate Workday, iCIMS, Paylocity, AAIM, Yello, Paycor, cookie banners, or run `scripts/neo/emit.mjs` & `jobs.mjs` | `references/ats-playbooks.md` |
 | Render a checklist, blocker notice, gate check, review, batch summary, or ledger (HTML or plain-text fallback) | `references/rendering.md` |

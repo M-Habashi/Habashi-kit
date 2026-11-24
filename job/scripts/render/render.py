@@ -412,9 +412,23 @@ def next_payload(workspace: Path, system: bool = True, neo_url: str = toolcheck.
     if open_apps:
         return step("finish_open", f"I'll finish or confirm {plural(len(open_apps), 'open application')}: {names(open_apps)}.", rows)
     answers = (workspace / "answers.md").read_text(encoding="utf-8") if (workspace / "answers.md").is_file() else ""
-    roles = (field_value(answers, "Target Roles") or "").strip("` ")
-    roles = roles if roles and not PLACEHOLDER.search(roles) else "matching"
+    plan = {label: answer_value(answers, label) for label in SEARCH_PLAN}
+    if not answer_value(answers, SEARCH_CONFIRMED):
+        return step("confirm_search", "Before I search, please check this plan. Say \"looks good\", "
+                                      "or tell me what to change.",
+                    [[label, value or "Not set yet"] for label, value in plan.items()])
+    roles = plan["Target Roles"] or "matching"
     return step("find_jobs", f"I'll look for new {roles} jobs and show you a short list to approve.", rows)
+
+
+SEARCH_PLAN = ("Target Roles", "Target Locations / Work Mode", "Companies to Prefer", "Companies to Avoid")
+SEARCH_CONFIRMED = "Search Plan Confirmed On"
+
+
+def answer_value(text: str, label: str) -> str:
+    """A filled answers.md value, or "" when the field is missing or still a placeholder."""
+    value = (field_value(text, label) or "").strip("` ")
+    return "" if not value or PLACEHOLDER.search(value) else value
 
 
 NEO_BLOCKED = "The browser must work before I can apply for you. See the browser line above."
