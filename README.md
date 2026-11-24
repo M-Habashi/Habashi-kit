@@ -40,8 +40,9 @@
 ## Quickstart (`Habashi-kit/writing`)
 
 1. **Add at least 3 reference papers** from your target journal or subfield into `writing/reference_papers/` (gitignored so PDFs and extracted `.md` files stay local), or point the agent to your paper workspace's `reference_papers/` folder.
-2. **Point your AI agent at `writing/SKILL.md`**. On startup, the skill verifies that at least 3 reference papers exist and prompts you to convert their PDFs into clean reading-order `.md` files.
-3. **Draft, revise, or audit** any section—use `"pipeline"` for the Manager → Drafter → independent Checker workflow, `"council"` for dual-reviewer grading against your reference papers, or `"Fresh Eyes"` for a zero-context cold read. Whenever a workflow delegates to subagents, the skill prompts you for your preferred model(s) and reasoning effort.
+2. **Optional — set up the interactive review website:** Copy `writing/review-template/` into your paper folder, edit `.agent/build_manuscript.py`, and launch `python .agent/review_server.py` (or `pwsh -File .agent/share_review.ps1` for a public Cloudflare link) to read versions, compare diffs, add comments/highlights, and make live edits.
+3. **Point your AI agent at `writing/SKILL.md`**. On startup, the skill verifies that at least 3 reference papers exist and prompts you to convert their PDFs into clean reading-order `.md` files.
+4. **Draft, revise, or audit** any section—use `"pipeline"` for the Manager → Drafter → independent Checker workflow, `"council"` for dual-reviewer grading against your reference papers, or `"Fresh Eyes"` for a zero-context cold read. Whenever a workflow delegates to subagents, the skill prompts you for your preferred model(s) and reasoning effort.
 
 ## Repository Map
 
@@ -88,8 +89,16 @@ Habashi-kit/
     ├── references/                 # On-demand style, citation, pipeline & council guides
     │   ├── style-and-citations.md
     │   └── pipeline-and-council.md
-    └── reference_papers/           # Local folder for >=3 reference-paper PDFs/MDs (gitignored)
-        └── .gitkeep
+    ├── reference_papers/           # Local folder for >=3 reference-paper PDFs/MDs (gitignored)
+    │   └── .gitkeep
+    └── review-template/            # Ready-to-use interactive manuscript review website template
+        ├── manuscript.html         # Single-file review app (reads title/versions dynamically)
+        └── .agent/
+            ├── build_manuscript.py # Starter manuscript builder (edit sections, equations, refs)
+            ├── manuscript_versions.js
+            ├── review_server.py    # Local auto-save server (comments, highlights, edits, versions)
+            ├── review_status.py    # Reports pending user edits and comment files
+            └── share_review.ps1    # Optional Cloudflare quick-tunnel share script
 ```
 
 ## Verification

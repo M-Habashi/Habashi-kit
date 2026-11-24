@@ -28,6 +28,7 @@ Before drafting, revising, or running the council:
 | **Independent review** | Offer or run the blind single-agent audit in `references/pipeline-and-council.md` §3. |
 | **Draft Abstract / Intro & Lit / Conclusions** | Combine `references/pipeline-and-council.md` §4 with `references/style-and-citations.md`. |
 | **Audit the manuscript** | Check the full manuscript for cross-section contradictions (numbers, units, symbols, figures/tables, roadmap links, overclaims, diagram/equation mismatches) and report findings before editing. |
+| **Set up the review website** | Copy `writing/review-template/` into the user's paper folder; edit `.agent/build_manuscript.py`, run `python .agent/build_manuscript.py "note"` to publish a new version, check edits/comments with `python .agent/review_status.py`, and serve via `python .agent/review_server.py` (or `.agent/share_review.ps1` for a public link). |
 
 ## Core Gates
 
