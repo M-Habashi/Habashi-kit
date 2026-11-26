@@ -2,7 +2,7 @@
 
 ## 1. Browser: BrowserOS Neo Only
 
-Use BrowserOS Neo for all web work. It is the user's real browser profile with live logins. It runs batched `run` scripts and the `scripts/neo/` helpers, uploads files straight into page inputs (`setFiles`), and has a password manager (`credentials`). Don't switch to another browser.
+Use BrowserOS Neo for all web work. It is the user's real browser profile with live logins. It runs batched `run` scripts and the `scripts/neo/` helpers, uploads files into page inputs (its `upload` tool, or CDP when the input is hidden, §4), and has a password manager (`credentials`). Don't switch to another browser.
 
 ## 2. When Neo Fails: Check, Debug, Fix
 
@@ -16,12 +16,18 @@ Use BrowserOS Neo for all web work. It is the user's real browser profile with l
 
 Use OS computer use whenever a specific task needs OS-level control. Typical tasks:
 - Opening, relaunching, or fixing BrowserOS Neo.
-- Native windows a page can't reach: file pickers, "Leave site?" prompts, popup windows outside Neo.
+- Native windows a page can't reach: "Leave site?" prompts, popup windows outside Neo (see "Neo pop-up windows" below).
 - Any other app's window the task needs.
 
 **It works per window, not on the whole desktop**: list the open windows, pick the one target window, then capture or act on that window. Re-list after anything changes; never reuse old coordinates or element indexes.
 
 **Rule**: name the task, do it at OS level, and **close the OS computer-use session as soon as that task is complete**. Then continue with Neo. Web-page work stays in Neo. If no OS computer-use tool is ready, ask the user to do that one step.
+
+### Neo pop-up windows (e.g. LinkedIn "Authorize")
+
+- Neo can't see or click pop-up windows a page opens, and **Codex computer use refuses Neo windows** (it can't verify the browser URL, so it stops).
+- Handle that one window yourself with PowerShell: list windows before and after the click, screenshot the new window, click with real mouse input, check with a new screenshot, then return to Neo.
+- Close the pop-ups you opened (check each title first). Never close Neo's main window. Don't hand this step to another agent.
 
 ### Which tool provides it
 
@@ -55,7 +61,8 @@ Many ATS portals wrap forms in same-origin iframes or reuse confusing input IDs.
 
 - **Paycor**: Watch out for misleading input IDs — `#uploadResumeInput`, `#transcript`, and `#coverLetter` may map to different visible slots than their IDs suggest, or be hidden behind custom dropzones. Always inspect the surrounding label/container before attaching files.
 - **iCIMS**: Forms usually live inside `#icims_content_iframe` (or `iframe[src*="icims.com"]`). Use `setFiles(p, selector, [filePath], { frame: '#icims_content_iframe' })` via CDP (`DOM.getDocument` with `pierce: true`).
-- **DOM `DataTransfer` fallback (when CDP file input is unavailable or ignored by JS frameworks)**:
+- **Hidden file input (e.g. Workday "Select files")**: Neo opens no native file dialog, and its `upload` tool can't target a hidden input. Inside `run`, set the file through CDP: `DOM.getDocument`, `DOM.querySelector` for the input (Workday: `input[data-automation-id="file-upload-input-ref"]`), then `DOM.setFileInputFiles` with the full file path.
+- **DOM `DataTransfer` fallback (last resort, only when CDP file input is unavailable or ignored by JS frameworks)**:
   - Construct a `DataTransfer`, append the `File`, assign `input.files = dt.files`, and dispatch **bubbling** `input` and `change` events (`new Event('input', { bubbles: true })`, `new Event('change', { bubbles: true })`).
 - **Never reload a partially filled form** just to retry an upload — you risk wiping every entered field.
 - **Visible verification gate**: After uploading, verify the accepted filename appears visibly in the portal UI (or attachment list) before continuing.
