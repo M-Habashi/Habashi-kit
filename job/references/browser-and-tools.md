@@ -21,13 +21,17 @@ Use OS computer use whenever a specific task needs OS-level control. Typical tas
 
 **It works per window, not on the whole desktop**: list the open windows, pick the one target window, then capture or act on that window. Re-list after anything changes; never reuse old coordinates or element indexes.
 
-**Rule**: name the task, do it at OS level, and **close the OS computer-use session as soon as that task is complete**. Then continue with Neo. Web-page work stays in Neo. If no OS computer-use tool is ready, ask the user to do that one step.
+**Rule**: name the task, do it at OS level, and **close the OS computer-use session as soon as that task is complete**. Then continue with Neo. Web-page work stays in Neo. If no OS computer-use tool is ready, use the PowerShell fallback below before asking the user.
+
+### Fallback: OS control through PowerShell
+
+Every agent with a shell can act at OS level, even without a computer-use tool. Write the small code you need: find the window (user32 `EnumWindows`, titles), bring it to the front (`SetForegroundWindow`), screenshot it (`System.Drawing` `CopyFromScreen` over its `GetWindowRect`) and look at the image, then click and type with real input (`SetCursorPos` + `mouse_event`, `SendKeys`). New screenshot after each action; one window, one task, then back to Neo.
 
 ### Neo pop-up windows (e.g. LinkedIn "Authorize")
 
 - Neo can't see or click pop-up windows a page opens, and **Codex computer use refuses Neo windows** (it can't verify the browser URL, so it stops).
-- Handle that one window yourself with PowerShell: list windows before and after the click, screenshot the new window, click with real mouse input, check with a new screenshot, then return to Neo.
-- Close the pop-ups you opened (check each title first). Never close Neo's main window. Don't hand this step to another agent.
+- Handle that one window yourself with the PowerShell fallback above: list windows before and after the click and act only in the new one, then return to Neo.
+- Close the pop-ups you opened (check each title first). Never close Neo's main window.
 
 ### Which tool provides it
 
@@ -44,6 +48,7 @@ Browser automation and OS computer use run on the **newest Codex Sol model** by 
 - **Pick it**: the `-sol` model with the highest version number (`gpt-6.2-sol` beats `gpt-6.1-sol` and `gpt-5.6-sol`), not the first one listed. In T3 Code, read it from `orchestrator_capabilities`; elsewhere, `python job/scripts/agents/codex_task.py latest`.
 - **Settings**: reasoning effort `high`, standard speed (T3 `serviceTier: default`; Codex CLI `service_tier="default"`). Use another effort or fast speed (`priority`, or `--fast`) only when the user asks. Fast speed uses more of their plan.
 - **What to hand over**: a whole task with its context, such as "apply to <job link> following job/SKILL.md Step 2 with workspace <dir>" or "find <role> jobs in <places> and return a short list". Not single clicks. Ask the helper to stop and return any question only the user can answer, then ask the user yourself.
+- **End to end**: whoever takes a task completes it from start to finish, including pop-ups and OS-level steps. Don't hand part of a task to another agent.
 - **How**:
 
 | Situation | Do this |
