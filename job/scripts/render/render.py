@@ -98,17 +98,22 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 th{text-align:left;font-weight:600;color:var(--hk-muted);padding:6px 10px 6px 0;white-space:nowrap}
 td{padding:7px 10px 7px 0;border-top:1px solid var(--hk-line);vertical-align:top}
 ul.ls{margin:0;padding:10px 0 10px 18px;display:flex;flex-direction:column;gap:4px}
-.job{position:relative;display:flex;flex-direction:column;gap:6px;background:var(--hk-card);border:1px solid var(--hk-line);border-radius:var(--radius,12px);padding:14px 16px 14px 20px;overflow:hidden}
-.job::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:var(--t)}
-.jt{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.st{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--t)}
-.st i{width:9px;height:9px;border-radius:50%;background:var(--t);box-shadow:0 0 0 4px color-mix(in srgb,var(--t) 20%,transparent)}
-.dte{color:var(--hk-muted);font-size:13px;font-variant-numeric:tabular-nums}
-.job h3{margin:2px 0 0;font-size:17px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
-.job h3 a{color:inherit;text-decoration:none}
-.job h3 a:hover{text-decoration:underline}
-.jm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--hk-muted);font-size:13px}
-.id{font-family:var(--font-mono,ui-monospace,"Cascadia Mono",Consolas,monospace);font-size:12px;color:var(--hk-fg);border:1px solid var(--hk-line);border-radius:6px;padding:1px 7px}
+.jobs{border:1px solid var(--hk-line);border-radius:var(--radius,10px);overflow:hidden;background:var(--hk-card)}
+.jb{width:100%;border-collapse:collapse;font-size:13.5px}
+.jb td{padding:9px 12px;border-top:1px solid var(--hk-line);white-space:nowrap;vertical-align:middle}
+.jb tr:first-child td{border-top:0}
+.jb td.s{width:1%;box-shadow:inset 3px 0 0 var(--t);padding-left:14px}
+.jb td.i{width:1%;font-family:var(--font-mono,ui-monospace,"Cascadia Mono",Consolas,monospace);font-size:12px;color:var(--hk-muted)}
+.jb td.j{max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis}
+.jb td.j b{font-weight:600}
+.jb td.j a{color:inherit;text-decoration:none}
+.jb td.j a:hover{text-decoration:underline}
+.jb .w{color:var(--hk-muted)}
+.jb td.d{width:1%;text-align:right;color:var(--hk-muted);font-variant-numeric:tabular-nums}
+.jb .sd{display:none}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:2px 9px 2px 7px;border-radius:999px;color:var(--t);background:color-mix(in srgb,var(--t) 14%,transparent)}
+.st i{width:7px;height:7px;border-radius:50%;background:currentColor}
+@media (max-width:520px){.jb td{padding:8px 7px}.jb td.s{padding-left:10px}.jb .w,.jb .fd{display:none}.jb .sd{display:inline}}
 .note{border-left:3px solid var(--t);background:color-mix(in srgb,var(--t) 10%,transparent);border-radius:var(--radius,10px);padding:10px 14px}
 """
 
@@ -173,24 +178,28 @@ def job_where(block: dict[str, Any]) -> str:
     return " · ".join(str(block[k]) for k in ("employer", "location") if block.get(k))
 
 
-def render_job_html(block: dict[str, Any]) -> str:
-    status = str(block.get("status", "")).lower()
-    tone = tone_of(status)
-    title = esc(block.get("title", ""))
-    if block.get("url"):
-        title = f'<a href="{esc(block["url"])}" target="_blank" rel="noopener">{title}</a>'
-    ident = f'<span class="id">{esc(block["id"])}</span>' if block.get("id") else ""
-    where = f"<span>{esc(job_where(block))}</span>" if job_where(block) else ""
-    return (f'<div class="job" style="--t:{TONES[tone]}"><div class="jt">'
-            f'<span class="st"><i></i>{esc(label_of(status).title())}</span>'
-            f'<span class="dte">{esc(block.get("date", ""))}</span></div>'
-            f'<h3>{title}</h3><div class="jm">{ident}{where}</div></div>')
+def render_jobs_html(blocks: list[dict[str, Any]]) -> str:
+    """Jobs as one-line rows of a single table: status, listing ID, job, date."""
+    rows = []
+    for block in blocks:
+        status = str(block.get("status", "")).lower()
+        title = esc(block.get("title", ""))
+        if block.get("url"):
+            title = f'<a href="{esc(block["url"])}" target="_blank" rel="noopener">{title}</a>'
+        where = f'<span class="w"> · {esc(job_where(block))}</span>' if job_where(block) else ""
+        full = " · ".join(x for x in (str(block.get("title", "")), job_where(block)) if x)
+        day = str(block.get("date", ""))
+        rows.append(
+            f'<tr style="--t:{TONES[tone_of(status)]}"><td class="s"><span class="st"><i></i>{esc(label_of(status).title())}</span></td>'
+            f'<td class="i">{esc(block.get("id") or "-")}</td><td class="j" title="{esc(full)}"><b>{title}</b>{where}</td>'
+            f'<td class="d"><span class="fd">{esc(day)}</span><span class="sd">{esc(day[5:] or day)}</span></td></tr>')
+    return f'<div class="jobs"><table class="jb"><tbody>{"".join(rows)}</tbody></table></div>'
 
 
 def render_block_html(block: dict[str, Any]) -> str:
     kind = block["type"]
     if kind == "job":
-        return render_job_html(block)
+        return render_jobs_html([block])
     heading = f'<h2>{esc(block["heading"])}</h2>' if block.get("heading") else ""
     if kind == "note":
         tone = block.get("tone", "info")
@@ -239,7 +248,17 @@ def render_html(payload: dict[str, Any]) -> str:
     jobs_only = all(b["type"] == "job" for b in payload.get("blocks", [])) and payload.get("blocks")
     header = "" if jobs_only else f'<div class="hd"><h1>{esc(payload["title"])}</h1>{pill(*badge) if badge else ""}</div>'
     sub = f'<div class="sub">{esc(payload["subtitle"])}</div>' if payload.get("subtitle") and not jobs_only else ""
-    blocks = "".join(render_block_html(b) for b in payload.get("blocks", []))
+    parts, run = [], []
+    for block in payload.get("blocks", []) + [{"type": "end"}]:
+        if block["type"] == "job":
+            run.append(block)
+            continue
+        if run:
+            parts.append(render_jobs_html(run))
+            run = []
+        if block["type"] != "end":
+            parts.append(render_block_html(block))
+    blocks = "".join(parts)
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -255,9 +274,12 @@ def render_text(payload: dict[str, Any]) -> str:
     badge = summary_badge(payload)
     jobs = [b for b in payload.get("blocks", []) if b["type"] == "job"]
     if jobs and len(jobs) == len(payload["blocks"]):
+        sw = max(len(label_of(b.get("status", ""))) for b in jobs) + 2
+        iw = max(len(str(b.get("id") or "-")) for b in jobs)
         return "".join(
-            f"[{label_of(b.get('status', ''))}]  {b.get('id') or '-'}  {b.get('title', '')}"
-            + (f" - {job_where(b)}" if job_where(b) else "") + (f"  ({b['date']})" if b.get("date") else "") + "\n"
+            f"{('[' + label_of(b.get('status', '')) + ']').ljust(sw)}  {str(b.get('id') or '-').ljust(iw)}  "
+            f"{str(b.get('date', '')).ljust(10)}  {b.get('title', '')}"
+            + (f" - {job_where(b)}" if job_where(b) else "") + "\n"
             for b in jobs)
     lines = [payload["title"] + (f"  [{badge[0]}]" if badge else "")]
     if payload.get("subtitle"):

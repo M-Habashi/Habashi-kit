@@ -23,7 +23,7 @@ Check your available tools at preflight (Step 1B) and remember the result:
 | Step 1 startup gate (tools, then documents) | `render.py preflight --workspace <ws> --fix --live --neo-agent ok` (exit `2` = blocker → resolve first). Apps only: `render.py tools --fix --live --neo-agent ok`. One line per app; text appears only when the user must do something, written in plain words |
 | Early blocker / skip notice | `card` with a `kv` block (requirement vs. profile) and an info `note`; see `examples/blocker.json` |
 | Pre-submit gate check (Step 2.5) | `card` with one `checklist`; see `examples/submit-gates.json` |
-| Job report: filled, blocked or submitted (SKILL.md "Reporting a Job") | `render.py job --status ... --id ... --title ...`; several jobs: `card` with one `job` block each, see `examples/job-report.json`. Only the ID, job, date and one colored status: orange filled, red blocked, green submitted |
+| Job report: filled, blocked or submitted (SKILL.md "Reporting a Job") | `render.py job --status ... --id ... --title ...`; several jobs: `card` with one `job` block each, see `examples/job-report.json`. One line per job (status, ID, job, date), so several jobs stack into one table. Orange filled, red blocked, green submitted |
 | Batch summary / needs-your-input list | `card` with a `table` (a `Status` column becomes pills); see `examples/batch-summary.json` |
 | Application history | `render.py ledger --workspace <ws>` |
 
@@ -48,7 +48,7 @@ Plain text stays plain in every mode: a single question, the "save to `answers.m
 ```
 
 - Checklist statuses: `ok`, `missing`, `blocked`, `warn`, `pending`, `optional`, `skipped`. All ledger statuses (`verified`, `submitted`, `submission_attempted`, `outcome_unknown`, ...) also map to colored pills.
-- A card made only of `job` blocks shows no header, just the job cards.
+- Consecutive `job` blocks render as one table, one line per job; a card made only of `job` blocks shows no header.
 - Without `badge`, the header pill is computed from the checklist items: `N missing`, `N to check`, or `Ready`.
 - Write the payload to a temp file (or pipe it with `card -`). `--json` on `preflight`/`ledger` prints the payload so you can add blocks before rendering it with `card`.
 - All values are HTML-escaped. Put only real data in payloads; never put personal data in the repo's `examples/`.
