@@ -32,7 +32,7 @@ The user only needs to say a few words. Workspace: `workspace/` unless the user 
 
 After each job ends **filled** (stopped before Submit), **blocked**, or **submitted**, report it in two parts:
 1. **The card**: `render.py job --status filled|blocked|submitted --id "<listing ID>" --title "<job title>" --employer "<employer>" --location "<city, state>" --url "<posting>" --out <workspace_dir>/output/render/job.html`, shown as in Output Rendering. It is one numbered line: number, ID, status, company, position, date and time (`Nov, 26 - 23:58`). Several jobs: one `card` payload with one `job` block each; they stack into one numbered table.
-   - **This template is fixed.** Always produce it with `render.py job` or `job` blocks. Never hand-write it or change its columns, order, colors or date format. Only the user can ask for a new design; then update `tests/golden/` with it.
+   - Use this template as is (example: `scripts/render/examples/job-report.json`); don't redesign it.
 2. **Points under it**: as few as possible (zero is fine), one short line each, only these kinds:
    - **Need from you**: information you can't continue without. Ask nothing else.
    - **Assumed**: choices you made that the profile, answers or the user's request didn't spell out.

@@ -1,3 +1,0 @@
-1.  REQ-1042  Filled     Northstar Engineering  Project Analyst - Denver, CO          Nov, 26 - 23:58
-2.  R-2291    Blocked    Example Co             Bridge Engineer I - Indianapolis, IN  Nov, 26 - 14:10
-3.  R-1188    Submitted  Sample Inc             Structural Designer - Chicago, IL     Nov, 25 - 09:30
