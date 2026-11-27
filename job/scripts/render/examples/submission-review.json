@@ -8,7 +8,7 @@
       ["Req ID", "REQ-1042"],
       ["Confirmation", "Thank you for applying! Reference #NS-58213"],
       ["Evidence", "workspace/evidence/northstar-engineering/confirmation.png"],
-      ["Done by", "GPT-6.2-Sol (high, standard), sent by Claude Opus 5.5"]
+      ["Done by", "Model A (high, standard), sent by Model B"]
     ]},
     {"type": "list", "heading": "Uploaded files", "items": [
       "Sample_Candidate_Resume.pdf",

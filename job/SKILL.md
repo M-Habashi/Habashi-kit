@@ -67,15 +67,11 @@ Before opening job portals, drafting materials, or submitting anything:
    - Not installed: stop and ask the user to install BrowserOS Neo.
    - Installed but closed or broken: use OS computer use to open or fix it, then continue in Neo.
 2. **OS computer use = windows outside the browser.** Whenever a specific task needs OS-level control (opening or fixing BrowserOS, a native file dialog, another app's window), do it with OS computer use. It works **one window at a time**: list windows, pick the target window, then capture or act on that window. Never ask for a whole-desktop screenshot. As soon as the task is done, close the OS computer-use session and continue in Neo.
+   - **Neo pop-ups (e.g. LinkedIn "Authorize") are the exception**: Codex computer use refuses Neo windows, so handle that one window yourself with PowerShell (screenshot, real mouse click), close it, and return to Neo. Details: `references/browser-and-tools.md` §3.
    - **Preferred: ChatGPT / Codex.** Computer use and browser automation need the Codex CLI signed in, **the Codex (ChatGPT) desktop app running** (the CLI can't do computer use alone), the computer-use plugin with paths matching the installed app, and Neo registered in Codex. `--live` proves it with a read-only window test.
    - **Alternative: Claude.** The user can use Claude instead, whichever works for them. Claude has computer use only in sessions inside the Claude desktop app with Computer use turned on; Claude Code CLI has none.
-   - If neither agent is ready, tell the user the fix shown on the card and continue. Until one works, OS-level steps go to the user.
-3. **Who does the work**: browser automation and OS computer use go to the **newest Codex Sol model** (highest `gpt-<version>-sol`, e.g. `gpt-6.2-sol`), reasoning effort **high**, **standard speed** (not fast), unless the user asks otherwise. Hand over whole tasks (one application, one job search), not single clicks.
-   - You are that model already: do it yourself.
-   - T3 Code is available: `delegate_task` to the Codex provider with that model, `reasoningEffort: high`, `serviceTier: default`.
-   - No T3 Code: `python job/scripts/agents/codex_task.py run "<task>" --sent-by "<your model name>" --workspace <workspace_dir>` (it picks the newest Sol and returns `done_by` and the result).
-   - No Codex or no Sol model: do it yourself and say so once.
-   - **Report who did it**: every finished task's plain line names both, e.g. "Done by GPT-6.2-Sol (high, standard), sent by Claude Opus 5.5". Record the same with `--done-by`/`--sent-by` in the ledger. Details: `references/browser-and-tools.md` §3.
+   - If neither agent is ready, use the PowerShell fallback (`references/browser-and-tools.md` §3): any agent with a shell can screenshot a window and click or type with real input. Ask the user only if that also fails.
+3. **Who does the work**: whoever takes a task completes it end to end, including pop-ups and OS-level steps; never hand part of a task to another agent. A helper agent may take a whole task (one application, one job search) at reasoning effort high and standard speed unless the user asks otherwise. Report every finished task in one plain line, "Done by <model> (<effort>, <speed>)", adding "sent by <model>" if it was handed over, and record the same with `--done-by`/`--sent-by` in the ledger. Details: `references/browser-and-tools.md` §3.
 4. **Helper tools**: Python `reportlab` + `pymupdf` for cover letters; Node.js packages for `scripts/neo/`. `--fix` installs them; only a missing Node.js needs the user.
 5. **Renderer**: note whether an inline HTML render tool exists. This sets `html` or `text` mode for the whole session (see Output Rendering above).
 
@@ -156,7 +152,7 @@ Load only the reference file relevant to your current step:
 | When You Need To... | Read This Reference |
 | --- | --- |
 | Run first-time setup, extract CV into `profile.md`, configure `answers.md` / `rules.json`, or confirm the search plan | `references/onboarding.md` |
-| Debug or fix BrowserOS Neo, use OS computer use, hand tasks to the newest Sol model, create or reuse portal accounts, handle iframe uploads, or manage tabs | `references/browser-and-tools.md` |
+| Debug or fix BrowserOS Neo, use OS computer use, decide who does the work, create or reuse portal accounts, handle iframe uploads, or manage tabs | `references/browser-and-tools.md` |
 | Automate Workday, iCIMS, Paylocity, AAIM, Yello, Paycor, cookie banners, or run `scripts/neo/emit.mjs` & `jobs.mjs` | `references/ats-playbooks.md` |
 | Render a checklist, blocker notice, gate check, review, batch summary, or ledger (HTML or plain-text fallback) | `references/rendering.md` |
 | Apply truthfulness rules, wording exceptions, learnable-software framing, CV order, cover-letter structure, or email-route applications | `references/form-and-truthfulness.md` |

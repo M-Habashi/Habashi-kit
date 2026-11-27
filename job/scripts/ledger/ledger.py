@@ -200,7 +200,7 @@ def record_entry(
 
 
 def agents(entry: dict[str, Any]) -> str:
-    """'GPT-6.2-Sol (high, standard), sent by Claude Opus 5.5', or whichever part is known."""
+    """'<model> (high, standard), sent by <model>', or whichever part is known."""
     done, sent = str(entry.get("done_by") or "").strip(), str(entry.get("sent_by") or "").strip()
     if done and sent and done != sent:
         return f"{done}, sent by {sent}"
@@ -309,8 +309,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_record.add_argument("--url", default="", help="Job posting or portal URL.")
     p_record.add_argument("--receipt", default="", help="Confirmation code or receipt summary.")
     p_record.add_argument("--notes", default="", help="Additional context or blocker details.")
-    p_record.add_argument("--sent-by", default="", help="Model that handed the job over (e.g. 'Claude Opus 5.5').")
-    p_record.add_argument("--done-by", default="", help="Model that did the job (e.g. 'GPT-6.2-Sol (high, standard)').")
+    p_record.add_argument("--sent-by", default="", help="Model that handed the job over, if any.")
+    p_record.add_argument("--done-by", default="", help="Model that did the job, with effort and speed, e.g. '<model> (high, standard)'.")
     p_record.add_argument("--workspace", type=Path, default=Path("workspace"), help="Workspace directory.")
 
     p_render = sub.add_parser("render", help="Render applications.jsonl into a clean Markdown log.md.")

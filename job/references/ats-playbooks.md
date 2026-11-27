@@ -30,6 +30,12 @@ Always dismiss cookie banners early so they do not intercept clicks or cover sub
 - Reuse saved per-employer Workday credentials from `credentials.md` (each company has an isolated tenant login); create and save a new one when none exists (`browser-and-tools.md` §6).
 - Autofill-from-resume often scrambles employment order or dates — always inspect every parsed Work Experience and Education block and fix discrepancies against `profile.md`.
 - Wait for dynamic dropdown menus and multi-step "Save and Continue" validation banners to settle before clicking Next.
+- **Apply with LinkedIn**: prefer it when offered. Click Allow in its pop-up (`browser-and-tools.md` §3, Neo pop-up windows), then check in Neo that the profile actually imported. LinkedIn remembers consent, so later pop-ups may close by themselves.
+- **Resume upload**: the file input is hidden; attach through CDP (`browser-and-tools.md` §4).
+- The sticky footer often covers buttons and fields: scroll the target into view before clicking.
+- Date fields are spinbuttons that ignore fill: click the month part and type the digits.
+- Back with unsaved answers raises "Discard Application?": choose Continue, save, then go Back.
+- "How did you hear about us" is a nested picker: type in its search box to find the source.
 
 ### iCIMS (`*.icims.com`)
 - Most form controls live inside a same-origin iframe (`iframe[src*="icims.com"]` / `#icims_content_iframe`).

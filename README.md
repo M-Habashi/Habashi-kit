@@ -74,7 +74,6 @@ Habashi-kit/
 │   │   ├── ledger/ledger.py
 │   │   ├── render/render.py        # preflight | tools | ledger | card -> HTML or text
 │   │   ├── render/toolcheck.py     # BrowserOS Neo + Codex computer-use checks
-│   │   ├── agents/codex_task.py    # Hand a task to the newest Codex Sol model (no T3 Code needed)
 │   │   ├── coverletter/
 │   │   │   ├── lint.py
 │   │   │   └── build.py

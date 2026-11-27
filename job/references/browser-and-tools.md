@@ -2,7 +2,7 @@
 
 ## 1. Browser: BrowserOS Neo Only
 
-Use BrowserOS Neo for all web work. It is the user's real browser profile with live logins. It runs batched `run` scripts and the `scripts/neo/` helpers, uploads files straight into page inputs (`setFiles`), and has a password manager (`credentials`). Don't switch to another browser.
+Use BrowserOS Neo for all web work. It is the user's real browser profile with live logins. It runs batched `run` scripts and the `scripts/neo/` helpers, uploads files into page inputs (its `upload` tool, or CDP when the input is hidden, §4), and has a password manager (`credentials`). Don't switch to another browser.
 
 ## 2. When Neo Fails: Check, Debug, Fix
 
@@ -16,38 +16,37 @@ Use BrowserOS Neo for all web work. It is the user's real browser profile with l
 
 Use OS computer use whenever a specific task needs OS-level control. Typical tasks:
 - Opening, relaunching, or fixing BrowserOS Neo.
-- Native windows a page can't reach: file pickers, "Leave site?" prompts, popup windows outside Neo.
+- Native windows a page can't reach: "Leave site?" prompts, popup windows outside Neo (see "Neo pop-up windows" below).
 - Any other app's window the task needs.
 
 **It works per window, not on the whole desktop**: list the open windows, pick the one target window, then capture or act on that window. Re-list after anything changes; never reuse old coordinates or element indexes.
 
-**Rule**: name the task, do it at OS level, and **close the OS computer-use session as soon as that task is complete**. Then continue with Neo. Web-page work stays in Neo. If no OS computer-use tool is ready, ask the user to do that one step.
+**Rule**: name the task, do it at OS level, and **close the OS computer-use session as soon as that task is complete**. Then continue with Neo. Web-page work stays in Neo. If no OS computer-use tool is ready, use the PowerShell fallback below before asking the user.
+
+### Fallback: OS control through PowerShell
+
+Every agent with a shell can act at OS level, even without a computer-use tool. Write the small code you need: find the window (user32 `EnumWindows`, titles), bring it to the front (`SetForegroundWindow`), screenshot it (`System.Drawing` `CopyFromScreen` over its `GetWindowRect`) and look at the image, then click and type with real input (`SetCursorPos` + `mouse_event`, `SendKeys`). New screenshot after each action; one window, one task, then back to Neo.
+
+### Neo pop-up windows (e.g. LinkedIn "Authorize")
+
+- Neo can't see or click pop-up windows a page opens, and **Codex computer use refuses Neo windows** (it can't verify the browser URL, so it stops).
+- Handle that one window yourself with the PowerShell fallback above: list windows before and after the click and act only in the new one, then return to Neo.
+- Close the pop-ups you opened (check each title first). Never close Neo's main window.
 
 ### Which tool provides it
 
 | Agent | OS computer use available when | Not available when |
 | --- | --- | --- |
-| **Codex (default)** | Codex CLI is signed in, the **Codex desktop app is running**, and the computer-use plugin's config paths match the installed app version | The app is closed (the CLI has no computer-use engine of its own), or the app was updated and not reopened, which leaves the config pointing at a deleted folder |
+| **Codex** | Codex CLI is signed in, the **Codex desktop app is running**, and the computer-use plugin's config paths match the installed app version | The app is closed (the CLI has no computer-use engine of its own), or the app was updated and not reopened, which leaves the config pointing at a deleted folder |
 | **Claude** | The session runs inside the Claude desktop app with Computer use turned on (Settings) | Claude Code CLI in a terminal, even with the desktop app open |
 
 `render.py tools --fix --live` checks all of this and shows one line per app (ChatGPT Codex preferred, Claude alternative). `--fix` first opens BrowserOS and the Codex app and links them by itself, so a line only shows text when the user must act. `--live` runs a read-only Codex window test (list windows, capture one). On Windows the Codex app's process is named `ChatGPT`; detect it by its install folder (`OpenAI.Codex_*`), not by name. After a Codex update, opening the app rewrites the computer-use paths in `~/.codex/config.toml` within seconds.
 
-### Handing tasks to the newest Sol model
+### Who does the work
 
-Browser automation and OS computer use run on the **newest Codex Sol model** by default.
-- **Pick it**: the `-sol` model with the highest version number (`gpt-6.2-sol` beats `gpt-6.1-sol` and `gpt-5.6-sol`), not the first one listed. In T3 Code, read it from `orchestrator_capabilities`; elsewhere, `python job/scripts/agents/codex_task.py latest`.
-- **Settings**: reasoning effort `high`, standard speed (T3 `serviceTier: default`; Codex CLI `service_tier="default"`). Use another effort or fast speed (`priority`, or `--fast`) only when the user asks. Fast speed uses more of their plan.
-- **What to hand over**: a whole task with its context, such as "apply to <job link> following job/SKILL.md Step 2 with workspace <dir>" or "find <role> jobs in <places> and return a short list". Not single clicks. Ask the helper to stop and return any question only the user can answer, then ask the user yourself.
-- **How**:
-
-| Situation | Do this |
-| --- | --- |
-| You are the newest Sol model | Do the task yourself. |
-| T3 Code tools exist | `delegate_task` to the Codex provider, model = newest Sol, options `reasoningEffort: high`, `serviceTier: default`. |
-| No T3 Code, Codex CLI installed | `python job/scripts/agents/codex_task.py run "<task>" --sent-by "<your model>" --workspace <dir>`. It runs `codex exec` on the newest Sol with effort high and standard speed, tells Codex to use Neo and per-window computer use, and prints JSON with `ok`, `done_by`, `sent_by` and `result`. Computer use still needs the Codex app running (`render.py tools --fix`). |
-| No Codex, or no Sol model | Do it yourself with Neo (and your own computer use, if you have it). Tell the user once, in plain words, that ChatGPT isn't available so you're doing it. |
-
-- **Report**: after each handed-over task, tell the user in one plain line who did it and who sent it: "Done by GPT-6.2-Sol (high, standard), sent by Claude Opus 5.5." If you did it yourself, say "Done by <your model>". Pass the same to the ledger (`--done-by`, `--sent-by`); the log and the application card show it in a "Done by" column.
+- **End to end**: whoever takes a task completes it from start to finish, including pop-ups and OS-level steps. Don't hand part of a task to another agent.
+- If you start a helper agent, give it a whole task with its context (one application, one job search), never single clicks. Use reasoning effort high and standard speed unless the user asks otherwise. The helper stops and returns any question only the user can answer; then ask the user yourself.
+- **Report**: after each task, tell the user in one plain line who did it: "Done by <model> (<effort>, <speed>)", adding "sent by <model>" when another agent handed it over. Pass the same to the ledger (`--done-by`, `--sent-by`); the log and the application card show it in a "Done by" column.
 
 ## 4. Embedded ATS & Iframe File-Upload Workarounds
 
@@ -55,7 +54,8 @@ Many ATS portals wrap forms in same-origin iframes or reuse confusing input IDs.
 
 - **Paycor**: Watch out for misleading input IDs — `#uploadResumeInput`, `#transcript`, and `#coverLetter` may map to different visible slots than their IDs suggest, or be hidden behind custom dropzones. Always inspect the surrounding label/container before attaching files.
 - **iCIMS**: Forms usually live inside `#icims_content_iframe` (or `iframe[src*="icims.com"]`). Use `setFiles(p, selector, [filePath], { frame: '#icims_content_iframe' })` via CDP (`DOM.getDocument` with `pierce: true`).
-- **DOM `DataTransfer` fallback (when CDP file input is unavailable or ignored by JS frameworks)**:
+- **Hidden file input (e.g. Workday "Select files")**: Neo opens no native file dialog, and its `upload` tool can't target a hidden input. Inside `run`, set the file through CDP: `DOM.getDocument`, `DOM.querySelector` for the input (Workday: `input[data-automation-id="file-upload-input-ref"]`), then `DOM.setFileInputFiles` with the full file path.
+- **DOM `DataTransfer` fallback (last resort, only when CDP file input is unavailable or ignored by JS frameworks)**:
   - Construct a `DataTransfer`, append the `File`, assign `input.files = dt.files`, and dispatch **bubbling** `input` and `change` events (`new Event('input', { bubbles: true })`, `new Event('change', { bubbles: true })`).
 - **Never reload a partially filled form** just to retry an upload — you risk wiping every entered field.
 - **Visible verification gate**: After uploading, verify the accepted filename appears visibly in the portal UI (or attachment list) before continuing.

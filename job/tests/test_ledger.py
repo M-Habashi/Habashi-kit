@@ -146,3 +146,16 @@ def test_render_collapses_events_and_groups_by_status(tmp_path: Path) -> None:
     assert "APP-2026-01" in log_md
     assert "Austin, TX" in log_md
     assert "Waiting on salary range" in log_md
+
+
+def test_ledger_records_who_did_the_job(tmp_path: Path) -> None:
+    sys.path.insert(0, str(LEDGER_SCRIPT.parent))
+    import ledger  # noqa: E402
+
+    ledger.record_entry(tmp_path, "Northstar", "Analyst", "verified",
+                        done_by="Model A (high, standard)", sent_by="Model B")
+    entry = json.loads((tmp_path / "applications.jsonl").read_text(encoding="utf-8"))
+    assert ledger.agents(entry) == "Model A (high, standard), sent by Model B"
+    assert ledger.agents({"done_by": "Model B", "sent_by": "Model B"}) == "Model B"
+    log = ledger.render_markdown(workspace=tmp_path, rules=None, output=None).read_text(encoding="utf-8")
+    assert "Done by" in log and "sent by Model B" in log
