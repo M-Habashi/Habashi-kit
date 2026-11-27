@@ -4,7 +4,7 @@
 Subcommands:
   card <payload.json | ->   Render any report payload (checklist, kv, table, list, note blocks).
   preflight --workspace W   Inspect a workspace + tools and render the Step 1 preflight checklist.
-  tools                     Check BrowserOS Neo, Codex computer use, and local scripts only.
+  tools                     Check BrowserOS Neo, the Cua Driver desktop helper, and local scripts only.
   next --workspace W        Show the single next step ("start" / "what's next"); --json adds `action`.
   ledger --workspace W      Render the application ledger (latest state per role).
 
@@ -334,11 +334,10 @@ def parse_tool(spec: str) -> dict[str, str]:
 
 def preflight_payload(workspace: Path, tools: list[str] | None = None, system: bool = True,
                       live: bool = False, neo_url: str = toolcheck.NEO_URL_DEFAULT,
-                      neo_agent: str | None = None, claude_cu: str | None = None,
-                      fix: bool = False) -> dict[str, Any]:
+                      neo_agent: str | None = None, fix: bool = False) -> dict[str, Any]:
     documents = document_items(workspace)
     blocks: list[dict[str, Any]] = [
-        tools_block(tools, system, live, neo_url, neo_agent, claude_cu, fix),
+        tools_block(tools, system, live, neo_url, neo_agent, fix),
         {"type": "checklist", "heading": "Your documents", "items": documents},
     ]
     if blocking(blocks):
@@ -346,8 +345,8 @@ def preflight_payload(workspace: Path, tools: list[str] | None = None, system: b
     elif any(i["status"] == "missing" for i in documents):
         blocks.append({"type": "note", "tone": "danger",
                        "text": "I'll pause applications until the items above are ready. I'll fill most of them from your resume."})
-    elif agent_note(blocks[0]):
-        blocks.append(agent_note(blocks[0]))
+    elif cua_note(blocks[0]):
+        blocks.append(cua_note(blocks[0]))
     return {"title": "Setup check", "blocks": blocks}
 
 
@@ -432,8 +431,8 @@ def answer_value(text: str, label: str) -> str:
 
 
 NEO_BLOCKED = "The browser must work before I can apply for you. See the browser line above."
-NO_AGENT = ("Neither app can control other apps yet, so I'll ask you for the occasional click. "
-            "See the lines above to fix it.")
+NO_CUA = ("I need the desktop helper for pop-ups such as LinkedIn sign-in. "
+          "See the desktop helper line above.")
 
 
 def local_problems() -> list[str]:
@@ -472,30 +471,23 @@ def local_item(fix: bool = False) -> dict[str, str]:
 
 
 def tools_block(tools: list[str] | None, system: bool, live: bool, neo_url: str,
-                neo_agent: str | None = None, claude_cu: str | None = None, fix: bool = False) -> dict[str, Any]:
+                neo_agent: str | None = None, fix: bool = False) -> dict[str, Any]:
     if system:
-        neo, chatgpt, claude = toolcheck.system_items(neo_url, live, neo_agent, claude_cu, fix)
+        neo, cua = toolcheck.system_items(neo_url, live, neo_agent, fix)
     else:
         skipped = {"label": "", "status": "skipped", "detail": "--offline"}
         neo = dict(skipped, label=toolcheck.BROWSER)
         if neo_agent and neo_agent.lower().startswith("error"):
             neo = {"label": neo["label"], "status": "missing",
                    "detail": "I can't connect to BrowserOS. Please close and reopen it, then tell me."}
-        chatgpt = dict(skipped, label=toolcheck.CHATGPT)
-        claude = dict(skipped, label=toolcheck.CLAUDE)
-    # whichever agent works is fine; the preferred one only alarms when neither works
-    if chatgpt["status"] == "warn" and claude["status"] == "ok":
-        chatgpt = dict(chatgpt, status="optional", detail="Not ready, so I'm using the Claude app. " + chatgpt["detail"])
-    if chatgpt["status"] == "ok" and claude["status"] == "optional":
-        claude = dict(claude, detail="")  # nothing to act on while the preferred agent works
-    items = [neo, chatgpt, claude, local_item(fix and system)] + [parse_tool(t) for t in (tools or [])]
+        cua = dict(skipped, label=toolcheck.CUA)
+    items = [neo, cua, local_item(fix and system)] + [parse_tool(t) for t in (tools or [])]
     return {"type": "checklist", "heading": "Apps", "items": items}
 
 
-def agent_note(block: dict[str, Any]) -> dict[str, Any] | None:
-    agents = [i for i in block["items"] if i["label"] in (toolcheck.CHATGPT, toolcheck.CLAUDE)]
-    if agents and all(i["status"] not in ("ok", "skipped") for i in agents):
-        return {"type": "note", "tone": "warning", "text": NO_AGENT}
+def cua_note(block: dict[str, Any]) -> dict[str, Any] | None:
+    if any(i["label"] == toolcheck.CUA and i["status"] not in ("ok", "skipped") for i in block["items"]):
+        return {"type": "note", "tone": "warning", "text": NO_CUA}
     return None
 
 
@@ -506,13 +498,13 @@ def blocking(blocks: list[dict[str, Any]]) -> bool:
 
 
 def tools_payload(tools: list[str] | None, system: bool, live: bool, neo_url: str,
-                  neo_agent: str | None = None, claude_cu: str | None = None, fix: bool = False) -> dict[str, Any]:
-    block = tools_block(tools, system, live, neo_url, neo_agent, claude_cu, fix)
+                  neo_agent: str | None = None, fix: bool = False) -> dict[str, Any]:
+    block = tools_block(tools, system, live, neo_url, neo_agent, fix)
     blocks = [block]
     if blocking(blocks):
         blocks.append({"type": "note", "tone": "danger", "text": NEO_BLOCKED})
-    elif agent_note(block):
-        blocks.append(agent_note(block))
+    elif cua_note(block):
+        blocks.append(cua_note(block))
     return {"title": "App check", "blocks": blocks}
 
 
@@ -583,17 +575,15 @@ def build_parser() -> argparse.ArgumentParser:
     checks = argparse.ArgumentParser(add_help=False)
     checks.add_argument("--tool", action="append", default=[], metavar="NAME=STATUS[:DETAIL]",
                         help="Agent-detected item for the browser block, e.g. 'Neo reachable from this agent=ok'. Repeatable.")
-    checks.add_argument("--live", action="store_true", help="Also run a read-only Codex computer-use window test (~1 min).")
+    checks.add_argument("--live", action="store_true", help="Also run a read-only Cua Driver window test.")
     checks.add_argument("--neo-url", default=toolcheck.NEO_URL_DEFAULT, help="BrowserOS Neo MCP URL.")
-    checks.add_argument("--offline", action="store_true", help="Skip process, network and Codex checks.")
+    checks.add_argument("--offline", action="store_true", help="Skip process, network and desktop-helper checks.")
     checks.add_argument("--fix", action="store_true",
-                        help="Fix agent-side problems first: open BrowserOS and the Codex app, link them, set up helper tools.")
+                        help="Fix agent-side problems first: open BrowserOS, start the Cua Driver, set up helper tools.")
     checks.add_argument("--neo-agent", default=None, metavar="ok|error:<message>",
                         help="Result of this agent's own Neo `tabs list` call.")
-    checks.add_argument("--claude-computer-use", choices=("yes", "no"), default=None,
-                        help="yes = this agent is Claude inside the desktop app with computer-use tools.")
 
-    p_tools = sub.add_parser("tools", parents=[common, checks], help="Check BrowserOS Neo, OS computer use and local scripts.")
+    p_tools = sub.add_parser("tools", parents=[common, checks], help="Check BrowserOS Neo, the Cua Driver and local scripts.")
     p_tools.set_defaults(workspace=None)
 
     p_pre = sub.add_parser("preflight", parents=[common, checks], help="Inspect a workspace + tools and render the preflight checklist.")
@@ -619,12 +609,12 @@ def main(argv: list[str] | None = None) -> int:
             payload = validate(json.loads(raw))
         elif args.command == "preflight":
             payload = preflight_payload(args.workspace, args.tool, not args.offline, args.live, args.neo_url,
-                                        args.neo_agent, args.claude_computer_use, args.fix)
+                                        args.neo_agent, args.fix)
         elif args.command == "next":
             payload = next_payload(args.workspace, not args.offline, args.neo_url, args.neo_agent)
         elif args.command == "tools":
             payload = tools_payload(args.tool, not args.offline, args.live, args.neo_url,
-                                    args.neo_agent, args.claude_computer_use, args.fix)
+                                    args.neo_agent, args.fix)
         else:
             payload = ledger_payload(args.workspace, args.rules)
         if args.as_json:

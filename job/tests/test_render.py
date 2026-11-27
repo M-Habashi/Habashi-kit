@@ -124,7 +124,7 @@ def test_tools_offline_and_blocking_neo(tmp_path: Path) -> None:
     res = run(RENDER, "tools", "--offline", "--format", "text")
     assert res.returncode == 0 and "Browser (BrowserOS)" in res.stdout and "SKIPPED" in res.stdout
     tools_lines = [l for l in res.stdout.splitlines() if l.startswith("  ")]
-    assert len(tools_lines) == 4  # one line per tool: Neo, ChatGPT/Codex, Claude, local scripts
+    assert len(tools_lines) == 3  # one line per tool: Neo, Cua Driver, local scripts
     blocked = run(RENDER, "tools", "--offline", "--format", "text", "--neo-agent", "error:refused")
     assert blocked.returncode == 2 and "browser must work" in blocked.stdout and "MCP" not in blocked.stdout
 

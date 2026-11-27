@@ -1,19 +1,17 @@
 """Compact tool-readiness checks for Habashi-kit/job, written for non-technical users.
 
-One checklist line per tool: the browser (BrowserOS Neo), the ChatGPT Codex app (preferred for
-controlling apps and the browser), the Claude app (alternative). A line carries text only when
-something is wrong, and that text is one plain-language step for the user.
+One checklist line per required tool: the browser (BrowserOS Neo) and the desktop helper
+(Cua Driver, https://github.com/trycua/cua) that handles windows outside the browser, such as
+sign-in pop-ups and native dialogs. A line carries text only when something is wrong, and that
+text is one plain-language step for the user.
 
-With fix=True the agent-side fixes run first (open BrowserOS, open the Codex app, which also
-refreshes its computer-use setup after an update, and link BrowserOS to Codex), so only steps
-that truly need the user remain. Browser problems block applications ("missing"); app problems
-are "warn".
+With fix=True the agent-side fixes run first (open BrowserOS, start the Cua Driver daemon), so only
+steps that truly need the user remain. Browser problems block applications ("missing").
 """
 
 from __future__ import annotations
 
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -26,27 +24,13 @@ from pathlib import Path
 
 NEO_URL_DEFAULT = "http://127.0.0.1:9010/mcp"
 BROWSER = "Browser (BrowserOS)"
-CHATGPT = "ChatGPT Codex app (preferred): controls apps and the browser"
-CLAUDE = "Claude app (alternative): controls apps and the browser"
-CU_LIVE_PROMPT = (
-    "Diagnostic test only, read-only. Using your Windows/macOS computer-use tool: call list_windows() "
-    "and count the windows, then capture ONE window with a screenshot (get_window_state with "
-    "include_screenshot true). Do not click, type, launch, activate, or close anything. "
-    "Reply in one line: 'CU_OK <window count>' or 'CU_FAIL <exact error>'."
-)
-CODEX_TEXT = {
-    "missing": "The ChatGPT Codex app isn't installed. Install it, or use the Claude app instead.",
-    "signin": "Please sign in to the ChatGPT Codex app with your ChatGPT account.",
-    "app": "Please open the ChatGPT Codex app and leave it running.",
-    "plugin": "Please turn on Computer Use in the ChatGPT Codex app settings.",
-    "stale": "Please close and reopen the ChatGPT Codex app (it was just updated).",
-    "neo": "I couldn't link BrowserOS to the ChatGPT Codex app. Please close and reopen both apps.",
-    "live": "The ChatGPT Codex app couldn't control other apps. Please close and reopen it.",
+CUA = "Desktop helper (Cua Driver): pop-ups and other windows"
+CUA_REPO = "https://github.com/trycua/cua"
+CUA_TEXT = {
+    "missing": "The desktop helper (Cua Driver) isn't installed. Say \"install it\" and I'll set it up.",
+    "stopped": "The desktop helper (Cua Driver) isn't running. Please restart your computer, then tell me.",
+    "live": "The desktop helper (Cua Driver) couldn't see your windows. Please restart your computer, then tell me.",
 }
-
-
-def codex_home() -> Path:
-    return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
 
 
 def item(label: str, status: str, detail: str) -> dict[str, str]:
@@ -177,118 +161,49 @@ def neo_item(procs: list[str], neo_url: str, agent: str | None = None, fix: bool
     return item(BROWSER, "ok", "")
 
 
-# --------------------------------------------------------------------------- ChatGPT Codex app
+# --------------------------------------------------------------------------- desktop helper (Cua Driver)
 
-APP_PATH_RE = re.compile(r"""([A-Za-z]:\\{1,2}[^'"\n;]*OpenAI\.Codex_[^'"\n;]*|/Applications/Codex\.app[^'"\n;]*)""")
-
-
-def stale_app_paths(config_text: str) -> list[str]:
-    """Paths in Codex config that point into a Codex app install folder that no longer exists."""
-    missing = []
-    for raw in sorted(set(APP_PATH_RE.findall(config_text))):
-        path = raw.replace("\\\\", "\\").rstrip("\\ ")
-        if not os.path.exists(path):
-            missing.append(path)
-    return missing
+def cua_path() -> str | None:
+    """The cua-driver executable: on PATH, or in its default install folder."""
+    found = shutil.which("cua-driver")
+    if found:
+        return found
+    candidates = [Path.home() / ".local" / "bin" / "cua-driver", Path("/usr/local/bin/cua-driver")]
+    if os.environ.get("LOCALAPPDATA"):
+        candidates.insert(0, Path(os.environ["LOCALAPPDATA"]) / "Programs" / "Cua" / "cua-driver" / "bin" / "cua-driver.exe")
+    return next((str(p) for p in candidates if p.is_file()), None)
 
 
-def codex_app_running(procs: list[str]) -> tuple[bool, bool]:
-    """(app running, computer-use helper running). Ignores the browser extension host,
-    which can stay alive after the app closes. On Windows the app process is named ChatGPT."""
-    app = helper = False
-    for proc in procs:
-        low = proc.replace("\\", "/").lower()
-        name = low.rsplit("/", 1)[-1]
-        if "/openai.codex_" in low or "codex.app/" in low:
-            if name.startswith("codex-computer-use"):
-                helper = True
-            elif not name.startswith("extension-host"):
-                app = True
-    return app, helper
+def cua_running(exe: str) -> bool:
+    code, out = run_cmd([exe, "status"], timeout=15)
+    return code == 0 and "daemon is running" in out.lower()
 
 
-def neo_registered(text: str, neo_url: str) -> bool:
-    low = text.lower()
-    return "browseros" in low or neo_url.lower() in low
+def cua_live_test(exe: str) -> bool:
+    """Read-only: list on-screen windows."""
+    code, out = run_cmd([exe, "call", "list_windows", '{"on_screen_only":true}'], timeout=30)
+    return code == 0 and '"window_id"' in out
 
 
-def codex_state(codex: str, procs: list[str], neo_url: str) -> str:
-    """First problem found as a CODEX_TEXT key, or '' when ready (before the live test)."""
-    code, login = run_cmd([codex, "login", "status"])
-    if code != 0 or "logged in" not in login.lower():
-        return "signin"
-    if not codex_app_running(procs)[0]:
-        return "app"
-    config = codex_home() / "config.toml"
-    text = config.read_text(encoding="utf-8", errors="replace") if config.is_file() else ""
-    if not ("[mcp_servers.cua_repl]" in text
-            or (codex_home() / "plugins" / "cache" / "openai-bundled" / "unified-computer-use").is_dir()):
-        return "plugin"
-    if stale_app_paths(text):
-        return "stale"
-    if not neo_registered(text, neo_url):
-        return "neo"
-    return ""
-
-
-def codex_live_test(codex: str, timeout: int = 240) -> tuple[str, str]:
-    code, out = run_cmd([codex, "exec", "--skip-git-repo-check", CU_LIVE_PROMPT], timeout=timeout)
-    lines = [l.strip() for l in out.splitlines() if l.strip().startswith(("CU_OK", "CU_FAIL"))]
-    if lines and lines[-1].startswith("CU_OK"):
-        return "ok", lines[-1]
-    if lines:
-        return "warn", lines[-1]
-    return "warn", f"No result (exit {code}): {out[-160:]}"
-
-
-def chatgpt_item(procs: list[str], live: bool = False, neo_url: str = NEO_URL_DEFAULT,
-                 fix: bool = False) -> dict[str, str]:
-    """Preferred: Codex (ChatGPT) computer use + BrowserOS automation, as one line."""
-    codex = shutil.which("codex")
-    if not codex:
-        return item(CHATGPT, "warn", CODEX_TEXT["missing"])
-    state = codex_state(codex, procs, neo_url)
-    if fix and state in ("app", "stale"):
-        # Opening the app starts computer use and rewrites stale paths after an update.
-        launch([codex, "app"])
-        wait_until(lambda: codex_state(codex, process_paths(), neo_url) not in ("app", "stale"), 45)
-        state = codex_state(codex, process_paths(), neo_url)
-    if fix and state == "neo":
-        run_cmd([codex, "mcp", "add", "browseros-neo", "--url", neo_url])
-        state = codex_state(codex, process_paths(), neo_url)
-    if state:
-        return item(CHATGPT, "warn", CODEX_TEXT[state])
-    if live and codex_live_test(codex)[0] != "ok":
-        return item(CHATGPT, "warn", CODEX_TEXT["live"])
-    return item(CHATGPT, "ok", "")
-
-
-# --------------------------------------------------------------------------- Claude app
-
-def claude_app_running(procs: list[str]) -> bool:
-    return any("/windowsapps/claude_" in p.replace("\\", "/").lower() or "claude.app/" in p.lower() for p in procs)
-
-
-def claude_item(procs: list[str], agent_cu: str | None, neo_url: str = NEO_URL_DEFAULT) -> dict[str, str]:
-    """Alternative: Claude has computer use only inside the Claude desktop app (not Claude Code CLI)."""
-    claude_cfg = Path.home() / ".claude.json"
-    text = claude_cfg.read_text(encoding="utf-8", errors="replace") if claude_cfg.is_file() else ""
-    if agent_cu == "yes":
-        linked = neo_registered(text, neo_url)
-        return item(CLAUDE, "ok" if linked else "warn",
-                    "" if linked else "I couldn't link BrowserOS to the Claude app. Please close and reopen both apps.")
-    if not shutil.which("claude") and not claude_app_running(procs):
-        return item(CLAUDE, "optional", "To use Claude instead: install the Claude app and turn on Computer use in its Settings.")
-    return item(CLAUDE, "optional", "To use Claude instead: open this chat in the Claude app and turn on Computer use in its Settings.")
+def cua_item(live: bool = False, fix: bool = False) -> dict[str, str]:
+    """One line: installed + daemon running (+ can list windows)."""
+    exe = cua_path()
+    if not exe:
+        return item(CUA, "missing", CUA_TEXT["missing"])
+    if fix and not cua_running(exe):
+        launch([exe, "serve"])
+        wait_until(lambda: cua_running(exe), 20)
+    if not cua_running(exe):
+        return item(CUA, "missing", CUA_TEXT["stopped"])
+    if live and not cua_live_test(exe):
+        return item(CUA, "missing", CUA_TEXT["live"])
+    return item(CUA, "ok", "")
 
 
 def system_items(neo_url: str = NEO_URL_DEFAULT, live: bool = False, neo_agent: str | None = None,
-                 claude_cu: str | None = None, fix: bool = False) -> list[dict[str, str]]:
+                 fix: bool = False) -> list[dict[str, str]]:
     procs = process_paths()
-    neo = neo_item(procs, neo_url, neo_agent, fix)
-    if fix:
-        procs = process_paths()
-    return [neo, chatgpt_item(procs, live, neo_url, fix), claude_item(procs, claude_cu, neo_url)]
+    return [neo_item(procs, neo_url, neo_agent, fix), cua_item(live, fix)]
 
 
 if __name__ == "__main__":  # quick manual check
