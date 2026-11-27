@@ -67,23 +67,22 @@ Show structured output (checklists, blocker notices, gate checks, reviews, batch
 
 Before opening job portals, drafting materials, or submitting anything:
 1. Call Neo `tabs` with action `list` yourself. That's the only check the script can't do for you.
-2. Run one command. It checks the apps first, then the documents. `--fix` first does every fix it can by itself (opens BrowserOS and the ChatGPT Codex app, links them, sets up helper tools):
+2. Run one command. It checks the apps first, then the documents. `--fix` first does every fix it can by itself (opens BrowserOS, starts the Cua Driver, sets up helper tools):
    ```bash
-   python job/scripts/render/render.py preflight --workspace <workspace_dir> --fix --live --neo-agent <ok|error:message> [--claude-computer-use yes] --out <workspace_dir>/output/render/preflight.html
+   python job/scripts/render/render.py preflight --workspace <workspace_dir> --fix --live --neo-agent <ok|error:message> --out <workspace_dir>/output/render/preflight.html
    ```
-   Pass `--claude-computer-use yes` only if you are Claude inside the Claude desktop app with computer-use tools. If the workspace doesn't exist yet, run `python job/scripts/init_workspace.py <workspace_dir>` first.
-3. The card has **one line per app**: the browser, the ChatGPT Codex app (preferred), the Claude app (alternative), and helper tools. A line shows text only when something is wrong, and that text is already a plain-language step for the user. If everything is ready, show the card and move on. Otherwise show it and ask for the first step only. Exit code `2` means a blocker (the browser isn't usable, or required documents are missing): resolve it before anything else. `render.py tools --fix` rechecks just the apps.
+   If the workspace doesn't exist yet, run `python job/scripts/init_workspace.py <workspace_dir>` first.
+3. The card has **one line per required tool**: the browser (BrowserOS Neo), the desktop helper (Cua Driver), and helper tools. A line shows text only when something is wrong, and that text is already a plain-language step for the user. If everything is ready, show the card and move on. Otherwise show it and ask for the first step only. Exit code `2` means a blocker (the browser isn't usable, or required documents are missing): resolve it before anything else. `render.py tools --fix` rechecks just the apps.
 
 ### 1A. Tools: Browser vs. OS Computer Use
 1. **Browser = BrowserOS Neo, always.** Do all web work in Neo: pages, forms, uploads, tabs, and saved passwords. Don't switch to another browser.
    - If Neo can't be reached or a call errors, check and debug it (is BrowserOS running, does the MCP answer, retry).
    - Not installed: stop and ask the user to install BrowserOS Neo.
-   - Installed but closed or broken: use OS computer use to open or fix it, then continue in Neo.
-2. **OS computer use = windows outside the browser.** Whenever a specific task needs OS-level control (opening or fixing BrowserOS, a native file dialog, another app's window), do it with OS computer use. It works **one window at a time**: list windows, pick the target window, then capture or act on that window. Never ask for a whole-desktop screenshot. As soon as the task is done, close the OS computer-use session and continue in Neo.
-   - **Neo pop-ups (e.g. LinkedIn "Authorize") are the exception**: Codex computer use refuses Neo windows, so handle that one window yourself with PowerShell (screenshot, real mouse click), close it, and return to Neo. Details: `references/browser-and-tools.md` §3.
-   - **Preferred: ChatGPT / Codex.** Computer use and browser automation need the Codex CLI signed in, **the Codex (ChatGPT) desktop app running** (the CLI can't do computer use alone), the computer-use plugin with paths matching the installed app, and Neo registered in Codex. `--live` proves it with a read-only window test.
-   - **Alternative: Claude.** The user can use Claude instead, whichever works for them. Claude has computer use only in sessions inside the Claude desktop app with Computer use turned on; Claude Code CLI has none.
-   - If neither agent is ready, use the PowerShell fallback (`references/browser-and-tools.md` §3): any agent with a shell can screenshot a window and click or type with real input. Ask the user only if that also fails.
+   - Installed but closed or broken: use the Cua Driver to open or fix it, then continue in Neo.
+2. **Desktop helper = Cua Driver** ([github.com/trycua/cua](https://github.com/trycua/cua), open source, works with any agent). Required next to BrowserOS Neo. Use it for windows outside the web page: sign-in pop-ups (e.g. LinkedIn "Authorize"), native dialogs, opening or fixing BrowserOS. One window, one step, then back to Neo. Details: `references/browser-and-tools.md` §3.
+   - Not installed: install it yourself with the official command from its GitHub README (Windows: `irm https://cua.ai/driver/install.ps1 | iex`), then `cua-driver doctor`.
+   - Use it as an MCP server (`cua-driver mcp`) or from the shell (`cua-driver call <tool> '<json>'`).
+   - If it can't be used, fall back to PowerShell (`references/browser-and-tools.md` §3). Ask the user only if that also fails.
 3. **Who does the work**: whoever takes a task completes it end to end, including pop-ups and OS-level steps; never hand part of a task to another agent. A helper agent may take a whole task (one application, one job search) at reasoning effort high and standard speed unless the user asks otherwise. Report every finished task in one plain line, "Done by <model> (<effort>, <speed>)", adding "sent by <model>" if it was handed over, and record the same with `--done-by`/`--sent-by` in the ledger. Details: `references/browser-and-tools.md` §3.
 4. **Helper tools**: Python `reportlab` + `pymupdf` for cover letters; Node.js packages for `scripts/neo/`. `--fix` installs them; only a missing Node.js needs the user.
 5. **Renderer**: note whether an inline HTML render tool exists. This sets `html` or `text` mode for the whole session (see Output Rendering above).

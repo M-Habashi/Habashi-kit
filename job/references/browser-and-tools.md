@@ -9,38 +9,32 @@ Use BrowserOS Neo for all web work. It is the user's real browser profile with l
 1. **Check**: Is the BrowserOS app running with a real browser window? A background `browseros-claw-server` process alone isn't enough. Does the Neo MCP answer `tabs` with action `list`?
 2. **Debug**: Read the error and retry the call once. For a stuck or broken tab, open a new tab rather than restarting the browser.
 3. **Not installed**: Tell the user and ask them to install BrowserOS Neo. Wait for them.
-4. **Installed but closed, frozen, or erroring**: Use OS computer use to open BrowserOS or fix it (relaunch the app, dismiss its dialog). Close the OS session, then continue in Neo.
+4. **Installed but closed, frozen, or erroring**: Use the Cua Driver (§3) to open BrowserOS or fix it (relaunch the app, dismiss its dialog). Close the OS session, then continue in Neo.
 5. Don't close BrowserOS windows that hold active sessions just to clear one stuck tab.
 
-## 3. OS Computer Use: Windows Outside the Browser
+## 3. Desktop Helper (Cua Driver): Windows Outside the Browser
 
-Use OS computer use whenever a specific task needs OS-level control. Typical tasks:
-- Opening, relaunching, or fixing BrowserOS Neo.
-- Native windows a page can't reach: "Leave site?" prompts, popup windows outside Neo (see "Neo pop-up windows" below).
-- Any other app's window the task needs.
+Required next to BrowserOS Neo: **Cua Driver**, an open-source computer-use driver for Windows, macOS and Linux that any agent can call: https://github.com/trycua/cua (docs: https://cua.ai/docs/cua-driver).
 
-**It works per window, not on the whole desktop**: list the open windows, pick the one target window, then capture or act on that window. Re-list after anything changes; never reuse old coordinates or element indexes.
-
-**Rule**: name the task, do it at OS level, and **close the OS computer-use session as soon as that task is complete**. Then continue with Neo. Web-page work stays in Neo. If no OS computer-use tool is ready, use the PowerShell fallback below before asking the user.
-
-### Fallback: OS control through PowerShell
-
-Every agent with a shell can act at OS level, even without a computer-use tool. Write the small code you need: find the window (user32 `EnumWindows`, titles), bring it to the front (`SetForegroundWindow`), screenshot it (`System.Drawing` `CopyFromScreen` over its `GetWindowRect`) and look at the image, then click and type with real input (`SetCursorPos` + `mouse_event`, `SendKeys`). New screenshot after each action; one window, one task, then back to Neo.
+- **Install** (official command from its README): Windows `irm https://cua.ai/driver/install.ps1 | iex`. Check with `cua-driver doctor` and `cua-driver status`.
+- **Call it** as an MCP server (`cua-driver mcp`) or from the shell: `cua-driver call <tool> '<json>'`; `cua-driver list-tools` and `cua-driver describe <tool>` show the tools.
+- **Use it for**: sign-in pop-ups, native dialogs, other apps' windows, opening or fixing BrowserOS. Web-page work stays in Neo. One window, one step, then back to Neo.
 
 ### Neo pop-up windows (e.g. LinkedIn "Authorize")
 
-- Neo can't see or click pop-up windows a page opens, and **Codex computer use refuses Neo windows** (it can't verify the browser URL, so it stops).
-- Handle that one window yourself with the PowerShell fallback above: list windows before and after the click and act only in the new one, then return to Neo.
-- Close the pop-ups you opened (check each title first). Never close Neo's main window.
+Neo can't see or click pop-up windows a page opens. Tested steps:
+1. `list_windows` before and after your click in Neo; act only in the new window.
+2. `bring_to_front` that window, then `get_desktop_state` for a screenshot. A window-only screenshot of a Neo pop-up comes back grey.
+3. Click with `click` and `"scope":"desktop"` at the screen position from that screenshot (e.g. Allow).
+4. Check the pop-up closed and the page moved on in Neo (Apply with LinkedIn lands on `.../apply/LinkedIn`). Close any pop-up you opened that is still open; never close Neo's main window.
 
-### Which tool provides it
+### Native dialogs (file pickers, other apps)
 
-| Agent | OS computer use available when | Not available when |
-| --- | --- | --- |
-| **Codex** | Codex CLI is signed in, the **Codex desktop app is running**, and the computer-use plugin's config paths match the installed app version | The app is closed (the CLI has no computer-use engine of its own), or the app was updated and not reopened, which leaves the config pointing at a deleted folder |
-| **Claude** | The session runs inside the Claude desktop app with Computer use turned on (Settings) | Claude Code CLI in a terminal, even with the desktop app open |
+`get_window_state` lists the controls with tokens. Fill a field with `set_value`, then `bring_to_front` and press the button with a desktop-scope `click`. A background click may not commit the dialog.
 
-`render.py tools --fix --live` checks all of this and shows one line per app (ChatGPT Codex preferred, Claude alternative). `--fix` first opens BrowserOS and the Codex app and links them by itself, so a line only shows text when the user must act. `--live` runs a read-only Codex window test (list windows, capture one). On Windows the Codex app's process is named `ChatGPT`; detect it by its install folder (`OpenAI.Codex_*`), not by name. After a Codex update, opening the app rewrites the computer-use paths in `~/.codex/config.toml` within seconds.
+### Fallback: OS control through PowerShell
+
+If the Cua Driver can't be used, any agent with a shell can act at OS level: find the window (user32 `EnumWindows`), bring it to the front (`SetForegroundWindow`), screenshot it (`System.Drawing` `CopyFromScreen`), then click and type with real input (`SetCursorPos` + `mouse_event`, `SendKeys`). New screenshot after each action.
 
 ### Who does the work
 

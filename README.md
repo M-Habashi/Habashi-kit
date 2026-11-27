@@ -30,12 +30,12 @@
      pnpm --dir job/scripts/neo install
      node job/scripts/neo/emit.mjs --list
      ```
-4. **Check readiness** (tools first, then documents; `--live` runs a read-only Codex computer-use test):
+4. **Check readiness** (tools first, then documents; `--live` runs a read-only desktop-helper window test):
    ```bash
    python job/scripts/render/render.py preflight --workspace workspace --fix --live --format text
    ```
-   Requirements: BrowserOS Neo for all browser work; for OS-level steps, Codex CLI **plus the Codex desktop app running** with its computer-use plugin.
-5. **Point your AI agent at `job/SKILL.md`** and run your first job search or application. The skill uses BrowserOS Neo for all browser work and OS computer use (Codex Computer Use by default) only for tasks outside the browser.
+   Requirements: **BrowserOS Neo** for all browser work, and **Cua Driver** ([github.com/trycua/cua](https://github.com/trycua/cua)) for windows outside the browser, such as sign-in pop-ups and native dialogs. No specific AI app is required.
+5. **Point your AI agent at `job/SKILL.md`** and run your first job search or application. The skill uses BrowserOS Neo for all browser work and the Cua Driver only for windows outside the browser.
 
 ## Quickstart (`Habashi-kit/writing`)
 
@@ -73,7 +73,7 @@ Habashi-kit/
 │   │   ├── init_workspace.py
 │   │   ├── ledger/ledger.py
 │   │   ├── render/render.py        # preflight | tools | ledger | card -> HTML or text
-│   │   ├── render/toolcheck.py     # BrowserOS Neo + Codex computer-use checks
+│   │   ├── render/toolcheck.py     # BrowserOS Neo + Cua Driver checks
 │   │   ├── coverletter/
 │   │   │   ├── lint.py
 │   │   │   └── build.py
