@@ -46,7 +46,7 @@ Every agent with a shell can act at OS level, even without a computer-use tool. 
 
 - **End to end**: whoever takes a task completes it from start to finish, including pop-ups and OS-level steps. Don't hand part of a task to another agent.
 - If you start a helper agent, give it a whole task with its context (one application, one job search), never single clicks. Use reasoning effort high and standard speed unless the user asks otherwise. The helper stops and returns any question only the user can answer; then ask the user yourself.
-- **Report**: after each task, tell the user in one plain line who did it: "Done by <model> (<effort>, <speed>)", adding "sent by <model>" when another agent handed it over. Pass the same to the ledger (`--done-by`, `--sent-by`); the log and the application card show it in a "Done by" column.
+- **Report**: follow SKILL.md "Reporting a Job" (job card plus a few points). The points end with "Done by <model> (<effort>, <speed>)", adding "sent by <model>" when another agent handed it over. Pass the same to the ledger (`--done-by`, `--sent-by`); the log shows it in a "Done by" column.
 
 ## 4. Embedded ATS & Iframe File-Upload Workarounds
 

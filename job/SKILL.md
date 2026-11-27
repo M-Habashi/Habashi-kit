@@ -28,6 +28,19 @@ The user only needs to say a few words. Workspace: `workspace/` unless the user 
 
 **End every reply with a recommendation**: one plain line saying what you recommend doing next and why, e.g. *"Next I recommend checking your search plan, so I only apply where you want. Reply "next" to go ahead."* Do this after every message, not only finished steps. If there are two sensible paths, recommend one and name the other in a few words.
 
+## Reporting a Job
+
+After each job ends **filled** (stopped before Submit), **blocked**, or **submitted**, report it in two parts:
+1. **The card**: `render.py job --status filled|blocked|submitted --id "<listing ID>" --title "<job title>" --employer "<employer>" --location "<city, state>" --url "<posting>" --out <workspace_dir>/output/render/job.html`, shown as in Output Rendering. Several jobs: one `card` payload with one `job` block each.
+2. **Points under it**: as few as possible (zero is fine), one short line each, only these kinds:
+   - **Need from you**: information you can't continue without. Ask nothing else.
+   - **Assumed**: choices you made that the profile, answers or the user's request didn't spell out.
+   - **Heads-up**: anything that could change the user's mind: a requirement gap, pay, location, a red flag, a fix needed before submitting.
+
+   Then the "Done by" line and your recommended next step. Never restate the card or list what went as expected.
+
+When you hand a job to a helper, ask it to return these points; you render the card. A hand-off message never replaces this format.
+
 ## When the User Corrects You
 
 Whenever the user corrects a fact, an answer, a choice you made, or how you work: fix it now, then ask once, in plain words, *"Should I remember this for next time?"*, naming the place in plain words ("your profile", "your standard answers"). Save only after a yes. Skip the question when the user says the change is just for this one job, or the same fact is already saved. You pick the file:
@@ -139,10 +152,7 @@ Do not click final **Submit** until every applicable gate passes (render them as
    python job/scripts/ledger/ledger.py render --workspace <workspace_dir>
    ```
 2. Save confirmation screenshot/text evidence under `<workspace_dir>/evidence/<employer-slug>/`.
-3. Deliver the review as a rendered card listing:
-   - Submitted role, employer, req ID, receipt/confirmation text, and uploaded files.
-   - Done by / sent by (which model did the job and which handed it over).
-   - Every custom question answered and every intentionally blank optional field.
+3. Report it as in **Reporting a Job** above.
 4. Safely close completed confirmation tabs one at a time after verifying live URL/title. **Never close unfinished, blocked, or unverified tabs.**
 
 ## On-Demand Reference Routing

@@ -2,7 +2,8 @@
 """Render Habashi-kit/job reports as themed HTML cards or plain text.
 
 Subcommands:
-  card <payload.json | ->   Render any report payload (checklist, kv, table, list, note blocks).
+  card <payload.json | ->   Render any report payload (checklist, kv, table, list, note, job blocks).
+  job --status S --title T  One job's card: listing ID, job, date, and filled/blocked/submitted.
   preflight --workspace W   Inspect a workspace + tools and render the Step 1 preflight checklist.
   tools                     Check BrowserOS Neo, Codex computer use, and local scripts only.
   next --workspace W        Show the single next step ("start" / "what's next"); --json adds `action`.
@@ -21,6 +22,7 @@ import json
 import re
 import shutil
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -47,7 +49,10 @@ STATUS = {
     "submission_attempted": ("info", "ATTEMPTED"),
     "reserved": ("info", "RESERVED"),
     "outcome_unknown": ("warning", "UNKNOWN"),
+    "filled": ("warning", "FILLED"),
 }
+# The job card's single indicator: filled (orange), blocked (red), submitted (green).
+JOB_STATUSES = ("filled", "blocked", "submitted")
 TONES = {
     "success": "var(--hk-ok)",
     "danger": "var(--hk-bad)",
@@ -62,7 +67,7 @@ ICONS = {
     "info": '<path d="M12 7v5l3 2"/>',
     "muted": '<path d="M7 12h10"/>',
 }
-BLOCK_TYPES = {"checklist", "kv", "table", "list", "note"}
+BLOCK_TYPES = {"checklist", "kv", "table", "list", "note", "job"}
 
 CSS = """
 :where(:root){color-scheme:light dark}
@@ -93,6 +98,17 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 th{text-align:left;font-weight:600;color:var(--hk-muted);padding:6px 10px 6px 0;white-space:nowrap}
 td{padding:7px 10px 7px 0;border-top:1px solid var(--hk-line);vertical-align:top}
 ul.ls{margin:0;padding:10px 0 10px 18px;display:flex;flex-direction:column;gap:4px}
+.job{position:relative;display:flex;flex-direction:column;gap:6px;background:var(--hk-card);border:1px solid var(--hk-line);border-radius:var(--radius,12px);padding:14px 16px 14px 20px;overflow:hidden}
+.job::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:var(--t)}
+.jt{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.st{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--t)}
+.st i{width:9px;height:9px;border-radius:50%;background:var(--t);box-shadow:0 0 0 4px color-mix(in srgb,var(--t) 20%,transparent)}
+.dte{color:var(--hk-muted);font-size:13px;font-variant-numeric:tabular-nums}
+.job h3{margin:2px 0 0;font-size:17px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.job h3 a{color:inherit;text-decoration:none}
+.job h3 a:hover{text-decoration:underline}
+.jm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--hk-muted);font-size:13px}
+.id{font-family:var(--font-mono,ui-monospace,"Cascadia Mono",Consolas,monospace);font-size:12px;color:var(--hk-fg);border:1px solid var(--hk-line);border-radius:6px;padding:1px 7px}
 .note{border-left:3px solid var(--t);background:color-mix(in srgb,var(--t) 10%,transparent);border-radius:var(--radius,10px);padding:10px 14px}
 """
 
@@ -117,6 +133,8 @@ def validate(payload: Any) -> dict[str, Any]:
     for i, block in enumerate(blocks):
         if not isinstance(block, dict) or block.get("type") not in BLOCK_TYPES:
             raise ValueError(f"Block {i} needs a 'type' in {sorted(BLOCK_TYPES)}.")
+        if block["type"] == "job" and str(block.get("status", "")).lower() not in JOB_STATUSES:
+            raise ValueError(f"Job block {i} needs 'status' in {list(JOB_STATUSES)}.")
     return payload
 
 
@@ -151,8 +169,28 @@ def pill(text: str, tone: str) -> str:
     return f'<span class="pill" style="--t:{TONES.get(tone, TONES["muted"])}">{esc(text)}</span>'
 
 
+def job_where(block: dict[str, Any]) -> str:
+    return " · ".join(str(block[k]) for k in ("employer", "location") if block.get(k))
+
+
+def render_job_html(block: dict[str, Any]) -> str:
+    status = str(block.get("status", "")).lower()
+    tone = tone_of(status)
+    title = esc(block.get("title", ""))
+    if block.get("url"):
+        title = f'<a href="{esc(block["url"])}" target="_blank" rel="noopener">{title}</a>'
+    ident = f'<span class="id">{esc(block["id"])}</span>' if block.get("id") else ""
+    where = f"<span>{esc(job_where(block))}</span>" if job_where(block) else ""
+    return (f'<div class="job" style="--t:{TONES[tone]}"><div class="jt">'
+            f'<span class="st"><i></i>{esc(label_of(status).title())}</span>'
+            f'<span class="dte">{esc(block.get("date", ""))}</span></div>'
+            f'<h3>{title}</h3><div class="jm">{ident}{where}</div></div>')
+
+
 def render_block_html(block: dict[str, Any]) -> str:
     kind = block["type"]
+    if kind == "job":
+        return render_job_html(block)
     heading = f'<h2>{esc(block["heading"])}</h2>' if block.get("heading") else ""
     if kind == "note":
         tone = block.get("tone", "info")
@@ -198,8 +236,9 @@ def render_block_html(block: dict[str, Any]) -> str:
 def render_html(payload: dict[str, Any]) -> str:
     payload = validate(payload)
     badge = summary_badge(payload)
-    header = f'<div class="hd"><h1>{esc(payload["title"])}</h1>{pill(*badge) if badge else ""}</div>'
-    sub = f'<div class="sub">{esc(payload["subtitle"])}</div>' if payload.get("subtitle") else ""
+    jobs_only = all(b["type"] == "job" for b in payload.get("blocks", [])) and payload.get("blocks")
+    header = "" if jobs_only else f'<div class="hd"><h1>{esc(payload["title"])}</h1>{pill(*badge) if badge else ""}</div>'
+    sub = f'<div class="sub">{esc(payload["subtitle"])}</div>' if payload.get("subtitle") and not jobs_only else ""
     blocks = "".join(render_block_html(b) for b in payload.get("blocks", []))
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
@@ -214,6 +253,12 @@ def render_html(payload: dict[str, Any]) -> str:
 def render_text(payload: dict[str, Any]) -> str:
     payload = validate(payload)
     badge = summary_badge(payload)
+    jobs = [b for b in payload.get("blocks", []) if b["type"] == "job"]
+    if jobs and len(jobs) == len(payload["blocks"]):
+        return "".join(
+            f"[{label_of(b.get('status', ''))}]  {b.get('id') or '-'}  {b.get('title', '')}"
+            + (f" - {job_where(b)}" if job_where(b) else "") + (f"  ({b['date']})" if b.get("date") else "") + "\n"
+            for b in jobs)
     lines = [payload["title"] + (f"  [{badge[0]}]" if badge else "")]
     if payload.get("subtitle"):
         lines.append(str(payload["subtitle"]))
@@ -557,6 +602,13 @@ def ledger_payload(workspace: Path, rules: Path | None = None) -> dict[str, Any]
     }
 
 
+def job_payload(status: str, title: str, employer: str = "", location: str = "", ident: str = "",
+                day: str = "", url: str = "") -> dict[str, Any]:
+    block = {"type": "job", "status": status, "title": title, "employer": employer,
+             "location": location, "id": ident, "date": day, "url": url}
+    return {"title": f"{title} - {label_of(status).title()}", "blocks": [block]}
+
+
 # --------------------------------------------------------------------------- CLI
 
 def emit(payload: dict[str, Any], fmt: str, out: Path | None) -> None:
@@ -605,6 +657,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_next.add_argument("--neo-url", default=toolcheck.NEO_URL_DEFAULT)
     p_next.add_argument("--offline", action="store_true", help="Skip process and network checks.")
 
+    p_job = sub.add_parser("job", parents=[common], help="One job's report card: id, job, date and one status.")
+    p_job.add_argument("--status", choices=JOB_STATUSES, required=True)
+    p_job.add_argument("--title", required=True, help="Job title.")
+    p_job.add_argument("--employer", default="")
+    p_job.add_argument("--location", default="")
+    p_job.add_argument("--id", default="", help="Listing / requisition ID.")
+    p_job.add_argument("--date", default=None, help="YYYY-MM-DD (default today).")
+    p_job.add_argument("--url", default="", help="Posting URL; the title links to it.")
+
     p_led = sub.add_parser("ledger", parents=[common], help="Render the application ledger.")
     p_led.add_argument("--workspace", type=Path, default=Path("workspace"))
     p_led.add_argument("--rules", type=Path, default=None)
@@ -622,6 +683,9 @@ def main(argv: list[str] | None = None) -> int:
                                         args.neo_agent, args.claude_computer_use, args.fix)
         elif args.command == "next":
             payload = next_payload(args.workspace, not args.offline, args.neo_url, args.neo_agent)
+        elif args.command == "job":
+            payload = job_payload(args.status, args.title, args.employer, args.location, args.id,
+                                  args.date or date.today().isoformat(), args.url)
         elif args.command == "tools":
             payload = tools_payload(args.tool, not args.offline, args.live, args.neo_url,
                                     args.neo_agent, args.claude_computer_use, args.fix)

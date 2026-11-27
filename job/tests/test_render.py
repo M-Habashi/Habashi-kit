@@ -181,3 +181,18 @@ def test_html_cards_theme_for_light_and_dark() -> None:
     # both fallback palettes define every token
     for name in ("fg", "muted", "ok", "bad", "warn", "info"):
         assert css.count(f"--hk-fb-{name}:") == 3, name
+
+
+def test_job_card_has_one_status_and_the_basics(tmp_path: Path) -> None:
+    out = tmp_path / "job.html"
+    res = run(RENDER, "job", "--status", "filled", "--id", "REQ-1042", "--title", "Project Analyst",
+              "--employer", "Northstar", "--location", "Denver, CO", "--date", "2026-11-26",
+              "--url", "https://example.com/jobs/1", "--out", str(out))
+    assert res.returncode == 0, res.stderr
+    page = out.read_text(encoding="utf-8")
+    assert "Filled" in page and "REQ-1042" in page and "2026-11-26" in page and "Project Analyst" in page
+    assert 'href="https://example.com/jobs/1"' in page and "var(--hk-warn)" in page and "<h1>" not in page
+    text = run(RENDER, "job", "--status", "blocked", "--title", "Bridge Engineer", "--id", "R-1",
+               "--date", "2026-11-26", "--format", "text").stdout
+    assert text.strip() == "[BLOCKED]  R-1  Bridge Engineer  (2026-11-26)"
+    assert run(RENDER, "job", "--status", "reserved", "--title", "X").returncode != 0
