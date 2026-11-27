@@ -194,5 +194,18 @@ def test_job_card_has_one_status_and_the_basics(tmp_path: Path) -> None:
     assert 'href="https://example.com/jobs/1"' in page and "var(--hk-warn)" in page and "<h1>" not in page and page.count("<tr") == 1
     text = run(RENDER, "job", "--status", "blocked", "--title", "Bridge Engineer", "--id", "R-1",
                "--date", "2026-11-26", "--format", "text").stdout
-    assert text.strip() == "R-1  Blocked  -  Bridge Engineer  Nov, 26"
+    assert text.strip() == "1.  R-1  Blocked  -  Bridge Engineer  Nov, 26"
     assert run(RENDER, "job", "--status", "reserved", "--title", "X").returncode != 0
+
+
+def test_job_rows_match_the_fixed_template(tmp_path: Path) -> None:
+    """The job row is a fixed part of the skill. If this fails, the design changed:
+    only update tests/golden/ when the user asked for the new design."""
+    example = JOB_ROOT / "scripts" / "render" / "examples" / "job-report.json"
+    golden = Path(__file__).resolve().parent / "golden"
+    out = tmp_path / "job-report.html"
+    assert run(RENDER, "card", str(example), "--out", str(out)).returncode == 0
+    assert out.read_text(encoding="utf-8") == (golden / "job-report.html").read_text(encoding="utf-8")
+    text = run(RENDER, "card", str(example), "--format", "text").stdout
+    assert text == (golden / "job-report.txt").read_text(encoding="utf-8")
+    assert text.splitlines()[0].startswith("1.  REQ-1042  Filled")

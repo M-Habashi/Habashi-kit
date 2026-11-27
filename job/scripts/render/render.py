@@ -102,6 +102,7 @@ ul.ls{margin:0;padding:10px 0 10px 18px;display:flex;flex-direction:column;gap:4
 .jb{width:100%;border-collapse:collapse;font-size:13.5px}
 .jb td{padding:9px 14px;border-top:1px solid var(--hk-line);white-space:nowrap;vertical-align:middle}
 .jb tr:first-child td{border-top:0}
+.jb td.n{width:1%;padding-right:0;color:var(--hk-muted);text-align:right;font-variant-numeric:tabular-nums}
 .jb td.i{font-family:var(--font-mono,ui-monospace,"Cascadia Mono",Consolas,monospace);font-size:12px;color:var(--hk-muted)}
 .jb td.s{color:var(--t);font-weight:600}
 .jb td.c{font-weight:500}
@@ -197,14 +198,14 @@ def job_cells(block: dict[str, Any]) -> list[str]:
 def render_jobs_html(blocks: list[dict[str, Any]]) -> str:
     """Jobs as one-line rows of a single table that scrolls sideways when narrow."""
     rows = []
-    for block in blocks:
+    for number, block in enumerate(blocks, 1):
         ident, status, company, _, moment = job_cells(block)
         title = esc(block.get("title", ""))
         if block.get("url"):
             title = f'<a href="{esc(block["url"])}" target="_blank" rel="noopener">{title}</a>'
         place = f'<span class="w"> · {esc(block["location"])}</span>' if block.get("location") else ""
         rows.append(
-            f'<tr><td class="i">{esc(ident)}</td>'
+            f'<tr><td class="n">{number}.</td><td class="i">{esc(ident)}</td>'
             f'<td class="s" style="--t:{TONES[tone_of(block.get("status", ""))]}">{esc(status)}</td>'
             f'<td class="c">{esc(company)}</td><td class="j">{title}{place}</td><td class="d">{esc(moment)}</td></tr>')
     return f'<div class="jobs"><table class="jb"><tbody>{"".join(rows)}</tbody></table></div>'
@@ -288,8 +289,8 @@ def render_text(payload: dict[str, Any]) -> str:
     badge = summary_badge(payload)
     jobs = [b for b in payload.get("blocks", []) if b["type"] == "job"]
     if jobs and len(jobs) == len(payload["blocks"]):
-        rows = [job_cells(b) for b in jobs]
-        widths = [max(len(r[i]) for r in rows) for i in range(5)]
+        rows = [[f"{n}."] + job_cells(b) for n, b in enumerate(jobs, 1)]
+        widths = [max(len(r[i]) for r in rows) for i in range(6)]
         return "".join("  ".join(c.ljust(w) for c, w in zip(r, widths)).rstrip() + "\n" for r in rows)
     lines = [payload["title"] + (f"  [{badge[0]}]" if badge else "")]
     if payload.get("subtitle"):
