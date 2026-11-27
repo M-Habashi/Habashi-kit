@@ -2,11 +2,11 @@
   "title": "Job report",
   "blocks": [
     {"type": "job", "status": "filled", "id": "REQ-1042", "title": "Project Analyst",
-     "employer": "Northstar Engineering", "location": "Denver, CO", "date": "2026-11-26",
+     "employer": "Northstar Engineering", "location": "Denver, CO", "date": "2026-11-26 23:58",
      "url": "https://example.com/jobs/REQ-1042"},
     {"type": "job", "status": "blocked", "id": "R-2291", "title": "Bridge Engineer I",
-     "employer": "Example Co", "location": "Indianapolis, IN", "date": "2026-11-26"},
+     "employer": "Example Co", "location": "Indianapolis, IN", "date": "2026-11-26 14:10"},
     {"type": "job", "status": "submitted", "id": "R-1188", "title": "Structural Designer",
-     "employer": "Sample Inc", "location": "Chicago, IL", "date": "2026-11-25"}
+     "employer": "Sample Inc", "location": "Chicago, IL", "date": "2026-11-25 09:30"}
   ]
 }

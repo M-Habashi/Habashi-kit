@@ -3,7 +3,7 @@
 
 Subcommands:
   card <payload.json | ->   Render any report payload (checklist, kv, table, list, note, job blocks).
-  job --status S --title T  One job's card: listing ID, job, date, and filled/blocked/submitted.
+  job --status S --title T  One job's row: ID, status, company, position, date and time.
   preflight --workspace W   Inspect a workspace + tools and render the Step 1 preflight checklist.
   tools                     Check BrowserOS Neo, the Cua Driver desktop helper, and local scripts only.
   next --workspace W        Show the single next step ("start" / "what's next"); --json adds `action`.
@@ -22,7 +22,7 @@ import json
 import re
 import shutil
 import sys
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -98,22 +98,18 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 th{text-align:left;font-weight:600;color:var(--hk-muted);padding:6px 10px 6px 0;white-space:nowrap}
 td{padding:7px 10px 7px 0;border-top:1px solid var(--hk-line);vertical-align:top}
 ul.ls{margin:0;padding:10px 0 10px 18px;display:flex;flex-direction:column;gap:4px}
-.jobs{border:1px solid var(--hk-line);border-radius:var(--radius,10px);overflow:hidden;background:var(--hk-card)}
+.jobs{border:1px solid var(--hk-line);border-radius:var(--radius,10px);background:var(--hk-card);overflow-x:auto}
 .jb{width:100%;border-collapse:collapse;font-size:13.5px}
-.jb td{padding:9px 12px;border-top:1px solid var(--hk-line);white-space:nowrap;vertical-align:middle}
+.jb td{padding:9px 14px;border-top:1px solid var(--hk-line);white-space:nowrap;vertical-align:middle}
 .jb tr:first-child td{border-top:0}
-.jb td.s{width:1%;box-shadow:inset 3px 0 0 var(--t);padding-left:14px}
-.jb td.i{width:1%;font-family:var(--font-mono,ui-monospace,"Cascadia Mono",Consolas,monospace);font-size:12px;color:var(--hk-muted)}
-.jb td.j{max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis}
-.jb td.j b{font-weight:600}
+.jb td.i{font-family:var(--font-mono,ui-monospace,"Cascadia Mono",Consolas,monospace);font-size:12px;color:var(--hk-muted)}
+.jb td.s{color:var(--t);font-weight:600}
+.jb td.c{font-weight:500}
+.jb td.j{width:100%}
 .jb td.j a{color:inherit;text-decoration:none}
 .jb td.j a:hover{text-decoration:underline}
 .jb .w{color:var(--hk-muted)}
-.jb td.d{width:1%;text-align:right;color:var(--hk-muted);font-variant-numeric:tabular-nums}
-.jb .sd{display:none}
-.st{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:2px 9px 2px 7px;border-radius:999px;color:var(--t);background:color-mix(in srgb,var(--t) 14%,transparent)}
-.st i{width:7px;height:7px;border-radius:50%;background:currentColor}
-@media (max-width:520px){.jb td{padding:8px 7px}.jb td.s{padding-left:10px}.jb .w,.jb .fd{display:none}.jb .sd{display:inline}}
+.jb td.d{text-align:right;color:var(--hk-muted);font-variant-numeric:tabular-nums}
 .note{border-left:3px solid var(--t);background:color-mix(in srgb,var(--t) 10%,transparent);border-radius:var(--radius,10px);padding:10px 14px}
 """
 
@@ -178,21 +174,39 @@ def job_where(block: dict[str, Any]) -> str:
     return " · ".join(str(block[k]) for k in ("employer", "location") if block.get(k))
 
 
+def when(value: Any) -> str:
+    """'2026-11-26 23:58' (or ISO, UTC converted to local time) -> 'Nov, 26 - 23:58'; a bare date -> 'Nov, 26'."""
+    raw = str(value or "").strip()
+    try:
+        moment = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return raw
+    if moment.tzinfo:
+        moment = moment.astimezone()
+    day = f"{moment:%b}, {moment.day}"
+    return day if len(raw) <= 10 else f"{day} - {moment:%H:%M}"
+
+
+def job_cells(block: dict[str, Any]) -> list[str]:
+    """ID, status, company, position, date and time: the column order of every job row."""
+    position = " - ".join(str(block[k]) for k in ("title", "location") if block.get(k))
+    return [str(block.get("id") or "-"), label_of(block.get("status", "")).title(),
+            str(block.get("employer") or "-"), position, when(block.get("date"))]
+
+
 def render_jobs_html(blocks: list[dict[str, Any]]) -> str:
-    """Jobs as one-line rows of a single table: status, listing ID, job, date."""
+    """Jobs as one-line rows of a single table that scrolls sideways when narrow."""
     rows = []
     for block in blocks:
-        status = str(block.get("status", "")).lower()
+        ident, status, company, _, moment = job_cells(block)
         title = esc(block.get("title", ""))
         if block.get("url"):
             title = f'<a href="{esc(block["url"])}" target="_blank" rel="noopener">{title}</a>'
-        where = f'<span class="w"> · {esc(job_where(block))}</span>' if job_where(block) else ""
-        full = " · ".join(x for x in (str(block.get("title", "")), job_where(block)) if x)
-        day = str(block.get("date", ""))
+        place = f'<span class="w"> · {esc(block["location"])}</span>' if block.get("location") else ""
         rows.append(
-            f'<tr style="--t:{TONES[tone_of(status)]}"><td class="s"><span class="st"><i></i>{esc(label_of(status).title())}</span></td>'
-            f'<td class="i">{esc(block.get("id") or "-")}</td><td class="j" title="{esc(full)}"><b>{title}</b>{where}</td>'
-            f'<td class="d"><span class="fd">{esc(day)}</span><span class="sd">{esc(day[5:] or day)}</span></td></tr>')
+            f'<tr><td class="i">{esc(ident)}</td>'
+            f'<td class="s" style="--t:{TONES[tone_of(block.get("status", ""))]}">{esc(status)}</td>'
+            f'<td class="c">{esc(company)}</td><td class="j">{title}{place}</td><td class="d">{esc(moment)}</td></tr>')
     return f'<div class="jobs"><table class="jb"><tbody>{"".join(rows)}</tbody></table></div>'
 
 
@@ -274,13 +288,9 @@ def render_text(payload: dict[str, Any]) -> str:
     badge = summary_badge(payload)
     jobs = [b for b in payload.get("blocks", []) if b["type"] == "job"]
     if jobs and len(jobs) == len(payload["blocks"]):
-        sw = max(len(label_of(b.get("status", ""))) for b in jobs) + 2
-        iw = max(len(str(b.get("id") or "-")) for b in jobs)
-        return "".join(
-            f"{('[' + label_of(b.get('status', '')) + ']').ljust(sw)}  {str(b.get('id') or '-').ljust(iw)}  "
-            f"{str(b.get('date', '')).ljust(10)}  {b.get('title', '')}"
-            + (f" - {job_where(b)}" if job_where(b) else "") + "\n"
-            for b in jobs)
+        rows = [job_cells(b) for b in jobs]
+        widths = [max(len(r[i]) for r in rows) for i in range(5)]
+        return "".join("  ".join(c.ljust(w) for c, w in zip(r, widths)).rstrip() + "\n" for r in rows)
     lines = [payload["title"] + (f"  [{badge[0]}]" if badge else "")]
     if payload.get("subtitle"):
         lines.append(str(payload["subtitle"]))
@@ -675,7 +685,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_job.add_argument("--employer", default="")
     p_job.add_argument("--location", default="")
     p_job.add_argument("--id", default="", help="Listing / requisition ID.")
-    p_job.add_argument("--date", default=None, help="YYYY-MM-DD (default today).")
+    p_job.add_argument("--date", default=None, help="YYYY-MM-DD HH:MM (default now); shown as 'Nov, 26 - 23:58'.")
     p_job.add_argument("--url", default="", help="Posting URL; the title links to it.")
 
     p_led = sub.add_parser("ledger", parents=[common], help="Render the application ledger.")
@@ -697,7 +707,7 @@ def main(argv: list[str] | None = None) -> int:
             payload = next_payload(args.workspace, not args.offline, args.neo_url, args.neo_agent)
         elif args.command == "job":
             payload = job_payload(args.status, args.title, args.employer, args.location, args.id,
-                                  args.date or date.today().isoformat(), args.url)
+                                  args.date or datetime.now().strftime("%Y-%m-%d %H:%M"), args.url)
         elif args.command == "tools":
             payload = tools_payload(args.tool, not args.offline, args.live, args.neo_url,
                                     args.neo_agent, args.fix)
